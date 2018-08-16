@@ -9,19 +9,151 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-#IST687 Introduction to Data Science: Week 3 Homework.
+IST687 Introduction to Data Science: Week 3 Homework.
 
-#Cleaning/munging Dataframes
+Cleaning/munging Dataframes
 
+###Part 1: The Code
+```{r eval=FALSE}
 #Data is often not in the format that you want/need. So, by "data munging", you have to refine the dataset into something more useful. 
-#In	this	lab,	you	need	to	read	in	a	dataset	and	work	on	that	dataset	(in	a	dataframe)	so	that	it	can	be	useful. Then,	we	will	explore	the	distribution	within	the	dataset.
+#In this lab, you need to read in a dataset and work on that dataset (in a dataframe) so that it can be useful. Then, we will explore the distribution within the dataset.
 
 #Step 1: Create a function (named readStates) to read a CSV file into R
-
 #This function calls the URL for the US government census, calls the url through the read.csv() function, and returns the loaded csv, without tidying it. 
 readStates <- function(){
-  url <- "http://www2.census.gov/programs-surveys/popest/tables/2010-2011/state/totals/nst-est2011-01.csv"
-  states_csv <- read.csv(url)
-  return(states_csv)
+url <- "http://www2.census.gov/programs-surveys/popest/tables/2010-2011/state/totals/nst-est2011-01.csv"
+  	states_csv <- read.csv(url)
+  	return(states_csv)
 }
 
+#Let’s use the function and create the census dataframe
+census <- readStates()
+
+#Step 2: Clean the dataframe
+#First, let’s remove the first 8 rows that contain the table information, and the population data for the general areas. 
+#We’ll also remove the last seven rows of the dataset that contain the data for Puerto Rico and additional table information.
+census <- census[c(-1:-8, -60:-66), ]
+
+#With the rows being dropped, it’s now time to clean the columns that contain NAs.
+census <- census[, -6:-10]
+
+#Now we’ll change the column names.
+colnames(census) <- c('stateName','Jul2010','Jul2011','base2010','base2011')
+
+#Let’s make sure that we have 51 rows and 5 columns; and check the first five rows of the dataset.
+dim(census)
+head(census)
+
+#A function was created to clean the numerical census data, taking each column, removing commas and spaces, and converting to number. 
+numberize <- function(dataset){
+	cols <- colnames(dataset[, -1])
+	for (i in cols){
+		dataset[[i]] <- gsub(',', '', dataset[[i]])
+		dataset[[i]] <- gsub(' ', '', dataset[[i]])
+dataset[[i]] <- as.numeric(as.character(dataset[[i]]))
+  	}
+  	return(dataset)
+}
+
+census <- numberize(census)
+census$stateName <- gsub('\\.', '', census$stateName)
+str(census)
+
+#Step 3: Store and explore the dataset
+#Store the census data in the data.frame dfStates and check the mean of dfStates$Jul2010
+dfStates <- census
+mean(dfStates$Jul2011)
+
+#Step 4: Find the State with the Highest Population
+#What is the highest population and to what state does it belong to?
+max(dfStates$Jul2011) #Max population is 37,253,956
+dfStates$stateName[which.max(dfStates$Jul2011)] #The population of California
+
+#Arrange the states by dfStates$Jul2011 in increasing order
+dfStates[order(dfStates$Jul2011),]
+
+#Step 5: Explore the distribution of the states.
+#Create a function that takes two parameters (a vector and a number) and returns the percentage of elements in the vector that are equal or below the number. 
+perc_below <- function(vector, number){
+	dat <- data.frame(dfStates[,vector][order(dfStates[, vector])])
+colnames(dat) <- vector
+  	tot <- nrow(dat)
+  	under <- sum(dat[, vector] <= number)
+  	perc_under <- under/tot
+  	return(perc_under)
+}
+perc_below('Jul2011', mean(dfStates$Jul2011))
+```
+
+
+###Part 2: Running the Code
+```{r}
+#Data is often not in the format that you want/need. So, by "data munging", you have to refine the dataset into something more useful. 
+#In this lab, you need to read in a dataset and work on that dataset (in a dataframe) so that it can be useful. Then, we will explore the distribution within the dataset.
+
+#Step 1: Create a function (named readStates) to read a CSV file into R
+#This function calls the URL for the US government census, calls the url through the read.csv() function, and returns the loaded csv, without tidying it. 
+readStates <- function(){
+url <- "http://www2.census.gov/programs-surveys/popest/tables/2010-2011/state/totals/nst-est2011-01.csv"
+  	states_csv <- read.csv(url)
+  	return(states_csv)
+}
+
+#Let’s use the function and create the census dataframe
+census <- readStates()
+
+#Step 2: Clean the dataframe
+#First, let’s remove the first 8 rows that contain the table information, and the population data for the general areas. 
+#We’ll also remove the last seven rows of the dataset that contain the data for Puerto Rico and additional table information.
+census <- census[c(-1:-8, -60:-66), ]
+
+#With the rows being dropped, it’s now time to clean the columns that contain NAs.
+census <- census[, -6:-10]
+
+#Now we’ll change the column names.
+colnames(census) <- c('stateName','Jul2010','Jul2011','base2010','base2011')
+
+#Let’s make sure that we have 51 rows and 5 columns; and check the first five rows of the dataset.
+dim(census)
+head(census)
+
+#A function was created to clean the numerical census data, taking each column, removing commas and spaces, and converting to number. 
+numberize <- function(dataset){
+	cols <- colnames(dataset[, -1])
+	for (i in cols){
+		dataset[[i]] <- gsub(',', '', dataset[[i]])
+		dataset[[i]] <- gsub(' ', '', dataset[[i]])
+dataset[[i]] <- as.numeric(as.character(dataset[[i]]))
+  	}
+  	return(dataset)
+}
+
+census <- numberize(census)
+census$stateName <- gsub('\\.', '', census$stateName)
+str(census)
+
+#Step 3: Store and explore the dataset
+#Store the census data in the data.frame dfStates and check the mean of dfStates$Jul2010
+dfStates <- census
+mean(dfStates$Jul2011)
+
+#Step 4: Find the State with the Highest Population
+#What is the highest population and to what state does it belong to?
+max(dfStates$Jul2011) #Max population is 37,253,956
+dfStates$stateName[which.max(dfStates$Jul2011)] #The population of California
+
+#Arrange the states by dfStates$Jul2011 in increasing order
+dfStates[order(dfStates$Jul2011),]
+
+#Step 5: Explore the distribution of the states.
+#Create a function that takes two parameters (a vector and a number) and returns the percentage of elements in the vector that are equal or below the number. 
+perc_below <- function(vector, number){
+	dat <- data.frame(dfStates[,vector][order(dfStates[, vector])])
+colnames(dat) <- vector
+  	tot <- nrow(dat)
+  	under <- sum(dat[, vector] <= number)
+  	perc_under <- under/tot
+  	return(perc_under)
+}
+perc_below('Jul2011', mean(dfStates$Jul2011))
+```

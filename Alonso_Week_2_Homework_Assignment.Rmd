@@ -13,78 +13,117 @@ require(scales)
 
 IST687 Introduction to Data Science: Week 2 Homework.
 
-Explore	the	mtcars	dataset	(which	is	already	included	in	R). Copy	the	mtcars	dataset	into	a
-new	variable	(called	it	myCars),	so	that	if	you	mess	up,	you	can	start	again	very	easily	(by	copying	mtcars	into	myCars	again).
+Explore	the	mtcars	dataset	(which	is	already	included	in	R).
 
-```{r cars}
+###Part 1: The Code
+```{r eval=FALSE}
+#For this exercise we'll use the dplyr and scales packages.
+require(dplyr)
+require(scales)
+
+#Copy	the	mtcars	dataset	into	a new	variable	(called	it	myCars),	so	that	if	you	mess	up,	you	can	start	again	very	easily	(by	copying	mtcars	into	myCars	again).
 cars <- rownames(mtcars)
 myCars <- cbind(cars, mtcars)
-```
 
-# Step 1: What is the hp (hp stands for "horse power")
-
-1. What is the highest hp?
-
-```{r myCars}
+#Step 1: What is the hp (hp stands for "horse power".)
+#1. What is the highest hp?
 max(myCars$hp)
-```
 
-2. Which car has the highest hp?
+#2. Which car has the highest hp?
+myCars %>% filter(hp == max(hp)) #'%>%' is known as a pipe operator that chains functions. 
 
-```{r}
-myCars %>% filter(hp == max(hp))
-```
-
-# Step 2: Explore mgp (mpg stands for "miles per gallon")
-
-3. What is the highest mpg?
-
-```{r}
+#Step 2: Explore mpg (mpg stands for "miles per gallon".)
+#3. What is the highest mpg?
 max(myCars$mpg)
-```
 
-4. Which car has the highest mpg?
-
-```{r}
+#4. Which car has the highest mpg?
 myCars %>% filter(mpg == max(mpg))
-```
 
-5. Create a sorted dataframe, based on mpg
-
-```{r}
+#5. Create a sorted dataframe, based on mpg
 myCars %>% arrange(mpg) %>% head()
-```
 
-# Step 3. Which car has the "best" combination of mpg and hp?
-
-6. I rescaled mpg and hp to 100, and obtained the average of the two new columns.
-```{r}
+#Step 3: Which car has the "best" combination of mpg and hp?
+#6. The rescale package will scale mpg and hp to 100, so both columns can be averaged on an equal footing.
 myCarsBest <- myCars %>% mutate(
-  mpg_rescale = rescale(mpg, to = c(0,100)),
+  mpg_rescale = rescale(mpg, to = c(0,100)),  #Rescale mpg and hp from 0 to 100.
   hp_rescale = rescale(hp, to = c(0,100)), 
-  rank = (mpg_rescale + hp_rescale)/2
+  rank = (mpg_rescale + hp_rescale)/2         #Calculate the average. 
 )
 
-myCarsBest %>% head(n=3)
+myCarsBest %>% head(n=3)                      #Show the best 3 cars.
 
 myCarsBest %>% filter(rank == max(rank))
-```
 
-7. The "best" car using this logic is the Maserati Bora.
+#7. The "best" car using this formula is the Maserati Bora.
 
-# Step 4. Which car has the "best" combination of mpg and hp, where mpg and hp must be given equal weight?
-
-```{r}
+#Step 4: Which car has the "best" combination of mpg and hp, where mpg and hp must be given an equal weight?
 myCarsEqual <- myCars %>% 
-  mutate(weighted_mean = mpg/mean(mpg) * hp/mean(hp)) %>% 
+  mutate(weighted_mean = mpg/mean(mpg) * hp/mean(hp)) %>% #calculates how far above/below the mean the value is. 
   ungroup()
 
 myCarsEqual %>% head(n=3)
 
-myCarsEqual %>% select(cars, mpg, hp, weighted_mean) %>% filter(weighted_mean == max(weighted_mean))
+myCarsEqual %>% 
+  select(cars, mpg, hp, weighted_mean) %>% 
+  filter(weighted_mean == max(weighted_mean))
+
+#Giving similar weights to both mpg and hp, the Maserati Bora is still the best car available.
 ```
 
-Giving similar weights to both mpg and hp, the Maserati Bora is still the best car available.
+###Part 2: Running the Code
+```{r cars}
+#For this exercise we'll use the dplyr and scales packages.
+require(dplyr)
+require(scales)
 
-# Sources
-1. Stack Exchange, https://stats.stackexchange.com/questions/25894/changing-the-scale-of-a-variable-to-0-100, 2018-07-17
+#Copy	the	mtcars	dataset	into	a new	variable	(called	it	myCars),	so	that	if	you	mess	up,	you	can	start	again	very	easily	(by	copying	mtcars	into	myCars	again).
+cars <- rownames(mtcars)
+myCars <- cbind(cars, mtcars)
+
+#Step 1: What is the hp (hp stands for "horse power".)
+#1. What is the highest hp?
+max(myCars$hp)
+
+#2. Which car has the highest hp?
+myCars %>% filter(hp == max(hp)) #'%>%' is known as a pipe operator that chains functions. 
+
+#Step 2: Explore mpg (mpg stands for "miles per gallon".)
+#3. What is the highest mpg?
+max(myCars$mpg)
+
+#4. Which car has the highest mpg?
+myCars %>% filter(mpg == max(mpg))
+
+#5. Create a sorted dataframe, based on mpg
+myCars %>% arrange(mpg) %>% head()
+
+#Step 3: Which car has the "best" combination of mpg and hp?
+#6. The rescale package will scale mpg and hp to 100, so both columns can be averaged on an equal footing.
+myCarsBest <- myCars %>% mutate(
+  mpg_rescale = rescale(mpg, to = c(0,100)),  #Rescale mpg and hp from 0 to 100.
+  hp_rescale = rescale(hp, to = c(0,100)), 
+  rank = (mpg_rescale + hp_rescale)/2         #Calculate the average. 
+)
+
+myCarsBest %>% head(n=3)                      #Show the best 3 cars.
+
+myCarsBest %>% filter(rank == max(rank))
+
+#7. The "best" car using this formula is the Maserati Bora.
+
+#Step 4: Which car has the "best" combination of mpg and hp, where mpg and hp must be given an equal weight?
+myCarsEqual <- myCars %>% 
+  mutate(weighted_mean = mpg/mean(mpg) * hp/mean(hp)) %>% #calculates how far above/below the mean the value is. 
+  ungroup()
+
+myCarsEqual %>% head(n=3)
+
+myCarsEqual %>% 
+  select(cars, mpg, hp, weighted_mean) %>% 
+  filter(weighted_mean == max(weighted_mean))
+
+#Giving similar weights to both mpg and hp, the Maserati Bora is still the best car available.
+```
+
+###Sources
+####1. Stack Exchange, https://stats.stackexchange.com/questions/25894/changing-the-scale-of-a-variable-to-0-100, 2018-07-17
