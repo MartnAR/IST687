@@ -1,0 +1,61 @@
+---
+title: "Alonso_Week 2 Lab Assignment"
+author: "Martin Alonso"
+date: "7/17/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(dplyr)
+```
+
+IST687 Introduction to Data Science: Week 2 Lab.
+
+The	“dataframe”	is	one	of	the	most	essential	data	structures	used	in	R.	It	is conceptually	equivalent	to	a	database	“relation”	and	to	the	typical	rectangular	dataset	with	variables	as columns	and	cases	as	rows.	For	this	activity,	you	will	gain	some	skill	with	manipulating	a dataframe.
+
+# Task 1
+
+Using the mtcars dataset, create a new column that measures engine displacement per cylinder in cubic inches. 
+
+```{r cars}
+mt_mycars <- mtcars
+
+mt_mycars$disp_per_cyl <- mt_mycars$disp/mt_mycars$cyl
+
+summary(mt_mycars$disp_per_cyl)
+```
+
+# Task 2
+
+Create four vectors of friends or family members which include the person ID, the number of Pets, the order of their birth, and the number of siblings.
+Group the vectors into a data frame called myFriends.
+
+```{r}
+personID <- c('Wife','Dad','Mum','Daughter','Mother-in-law')
+Pets <- c(1, 7, 0, 0, 1)
+Order <- c(1, 3, 1, 1, 2)
+Siblings <- c(0, 2, 3, 0, 1)
+
+myFriends <- data.frame(personID, Pets, Order, Siblings)
+```
+
+Show the structure of myFriends...
+
+```{r}
+str(myFriends)
+```
+
+...and the summary.
+
+```{r}
+summary(myFriends)
+```
+
+Finally, display the values using the `$` sign.
+```{r}
+myFriends$personID
+myFriends$Pets
+myFriends$Order
+myFriends$Siblings
+```

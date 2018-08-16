@@ -1,0 +1,84 @@
+---
+title: "Alonso_Week 1 Lab Assignment"
+author: "Martin Alonso"
+date: "7/9/2018"
+output: 
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+IST687 Introduction to Data Science: Week 1 Lab.
+
+Boolean logic is logic where the answer to a question asked can only be `TRUE` or `FALSE`. There are no other options. 
+Within R, there are three operators that are commonly used for Boolean logic: AND (`&`), OR (`|`), and NOT (`!`). 
+
+# AND (`&`)
+The element-wise AND (`&`) operator is used to test whether two elements (including all elements within a vector) are equal to each other. 
+
+```{r}
+# 1 & 1 is TRUE because they share the same element.
+1 & 1 
+
+# TRUE & TRUE are also TRUE because they share the same element
+TRUE & TRUE
+
+# TRUE & FALSE or FALSE & FALSE do not share the same element, hence they are both FALSE
+TRUE & FALSE
+FALSE & FALSE
+```
+
+In R, there also exist another Logical AND (`&&`) that only tests whether the first element of two vectors are both TRUE.
+```{r}
+# Returns TRUE since both of the first elements of the vectors are TRUE..
+a <- c(1, 2, 3, 4)
+b <- c(5, 6, 7, 8)
+print(a && b)
+
+# Returns FALSE because both of the first elements of the two vectors isn't TRUE
+a <- c(1, 2, 3, 4)
+d <- c(0, 6, 7, 8)
+print(a && d)
+```
+
+# OR (`|`)
+The element-wise OR (`|`) operator tests whether an element (or all elements in a vector) is either `TRUE` or `FALSE` based on whether one of them is `TRUE`.
+```{r}
+# Two integers are both TRUE values, hence the operator recognizes them as TRUE.
+3 | 4
+
+# The same can be said of 1 and TRUE.
+1 | TRUE
+
+# But if none of the options is TRUE, then the logical operator gives FALSE
+0 | 0
+FALSE | FALSE
+
+```
+
+There is also a Logical OR (`||`) operator that tests whether the first element of two vectors is TRUE or FALSE.
+```{r}
+# Returns TRUE since one of the first elements of the vectors are TRUE.
+a <- c(1, 2, 3, 4)
+b <- c(5, 6, 7, 8)
+print(a || b)
+
+# Returns FALSE because one of the first elements of the two vectors isn't TRUE
+a <- c(FALSE, 2, 3, 4)
+d <- c(0, 6, 7, 8)
+```
+
+# NOT (`!`)
+The final operator is the NOT (`!`) operator that takes each element of a vector and negates it, giving it its opposite value.
+```{r}
+# All numbers, except 0, are TRUE. By negating a, we turn it FALSE.
+a <- 1
+!a 
+
+# In the case of TRUE and FALSE, negating them inverses their values.
+b <- c(TRUE, FALSE)
+!b 
+```
+

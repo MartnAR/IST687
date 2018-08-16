@@ -1,0 +1,93 @@
+---
+title: "Alonso_Week 1 Homework Assignment"
+author: "Martin Alonso"
+date: "7/9/2018"
+output:
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+IST687 Introduction to Data Science: Week 1 Homework.
+
+Define the following vectors representing weight and height of people (in inches and pounds):
+
+```{r}
+height <- c(59, 60, 61, 58, 67, 72, 70)
+weight <- c(150, 140, 180, 220, 160, 140, 130)
+```
+
+Define a variable: 
+```{r}
+a <- 150
+```
+
+Now, to explore the data.
+
+#Step 1: Calculating means
+1. Compute the average height
+```{r}
+mean(height)
+```
+
+2. Compute the average weight
+```{r}
+mean(weight)
+```
+
+3. Calculate the lenght of the vector 'height' and 'weight'
+```{r}
+length(height)
+length(weight)
+```
+
+4. Calculate the sum of the heights
+```{r}
+sum(height)
+```
+
+5. Compute the average of both height and weight, by dividing the sum by the length of the vector.
+```{r}
+sum(height)/length(height)
+sum(weight)/length(weight)
+```
+
+There is no difference in the use of `mean()` or `sum()/length()`. They are interchangeable, though the former is quicker to use.
+
+#Step 2: Using max/min functions
+6. Compute the max height, store the result in `maxH`
+```{r}
+maxH <- max(height)
+print(maxH)
+```
+
+7. Compute the min(weight), store the results in `minW`
+```{r}
+minW <- min(weight)
+print(minW)
+```
+
+#Step 3: Vector Math
+8. Create a new vector, which is `weight + 5` (every person gained 5 pounds.)
+```{r}
+newW <- weight + 5
+print(newW)
+```
+
+9. Compute the `weight/height` for each person, using the new weight just created
+```{r}
+newW/height
+```
+
+#Step 4: Using Conditional if statements
+10. Write R code to test if max height is greater than 60.
+```{r}
+if(maxH > 60){"yes"} else {"no"}
+```
+
+11. Write R code to test if min weight is greater than the variable `a`.
+```{r}
+if(minW < a){"yes"} else {"no"}
+```

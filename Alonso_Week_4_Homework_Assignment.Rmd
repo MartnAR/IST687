@@ -1,0 +1,213 @@
+---
+title: "Alonso_Week 4 Homework Assignment"
+author: "Martin Alonso"
+date: "8/9/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(moments)
+library(stringr)
+```
+
+IST687 Introduction to Data Science: Week 4 Homework.
+
+Let's continue our exploration of sampling
+
+### Part 1: The Code
+```{r eval=FALSE}
+library(moments)
+library(stringr)
+
+# Step 1: Write a summarizing function to understand the distribution of a vector.
+# 1. The function should be called 'printVecInfo' and should take a vector as an input.
+# 2. The function should print the following info: mean, median, min & max, stddev, quantiles (0.05 & 0.95), and skewness
+# 3. Test the function with vector (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50)
+
+printVecInfo <- function(v) {
+  mean_v <- mean(v)
+  median_v <- median(v)
+  min_v <- min(v)
+  max_v <- max(v)
+  sd_v <- sd(v)
+  q05_v <- quantile(v, 0.05)
+  q95_v <- quantile(v, 0.95)
+  skew_v <- skewness(v)
+  
+  results <- cat(paste("mean:", mean_v), 
+                 paste("\nmedian:", median_v), 
+                 paste("\nmin:", min_v,  "max:", max_v),
+                 paste("\nsd:", sd_v),
+                 paste("\nquantile (0.05-0.95):", q05_v, '-', q95_v),
+                 paste("\nskewness:", skew_v), '\n')
+  
+  return(invisible(results))
+}
+
+#This is the vector that will be used to test the function
+v <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50)
+
+printVecInfo(v)
+
+#Step 2: Creating Samples in a Jar
+#4. Create a variable 'jar' that has 50 red and 50 blue marbles.
+#5. Confirm there are 50 red samples by summing.
+#6. Sample 10 marbles from 'jar'. How many are red? What was the percentage?
+
+#Create 'jar' using rep() to replicate 'red' and 'blue' strings 50 times each.
+jar <- c(rep('red', 50), rep('blue', 50))
+
+#Confirm there are 50 'red' strings
+sum(str_detect(jar, 'red'))
+
+#Sampling 10 marbles from jar
+jar_sample <- sample(jar, 10)
+print(jar_sample)
+sum(str_detect(jar_sample, 'red')) #count number of 'red' marbles
+sum(str_detect(jar_sample, 'red'))/length(jar_sample) #percentage of 'red' marbles
+
+
+#7. Replicate sample drawing 20 times. Then, use printVecInfo to check the distribution, and generate a histogram.  
+sample20 <- replicate(20, mean(str_detect(sample(jar, 10, replace = TRUE2), pattern = 'red')))
+
+printVecInfo(sample20)
+
+hist(sample20)
+
+#8. Repeat exercise 7 but drawing 20 samples 100 times. 
+sample100 <- replicate(100, mean(str_detect(sample(jar, 20, replace = TRUE), pattern = 'red')))
+
+printVecInfo(sample100)
+
+hist(sample100)
+
+#9. Repeat exercise 8 but drawing 100 samples 100 times.
+sample10000 <- replicate(100, mean(str_detect(sample(jar, 100, replace = TRUE), pattern = 'red')))
+
+printVecInfo(sample10000)
+
+hist(sample10000)
+
+#Step 3: Explore the airquality dataset
+#10. Store the air quality dataset into a temporary variable.
+#11. Clean the dataset by removing NAs.
+#12. Explore the Ozone, Wind, and Temp columns using printVecInfo and create a histogram of each.
+
+#Store the dataset into variable 'aq'
+aq <- airquality
+
+#Remove NAs
+aq <- na.omit(aq)
+
+#Explore the dataset... 
+printVecInfo(aq$Ozone)
+printVecInfo(aq$Wind)
+printVecInfo(aq$Temp)
+
+#...and create histograms
+hist(aq$Ozone)
+
+hist(aq$Wind)
+
+hist(aq$Temp)
+```
+
+### Part 2: Running the code
+```{r}
+library(moments)
+library(stringr)
+
+# Step 1: Write a summarizing function to understand the distribution of a vector.
+# 1. The function should be called 'printVecInfo' and should take a vector as an input.
+# 2. The function should print the following info: mean, median, min & max, stddev, quantiles (0.05 & #0.95), and skewness
+# 3. Test the function with vector (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50)
+
+printVecInfo <- function(v) {
+  mean_v <- mean(v)
+  median_v <- median(v)
+  min_v <- min(v)
+  max_v <- max(v)
+  sd_v <- sd(v)
+  q05_v <- quantile(v, 0.05)
+  q95_v <- quantile(v, 0.95)
+  skew_v <- skewness(v)
+  
+  results <- cat(paste("mean:", mean_v), 
+                 paste("\nmedian:", median_v), 
+                 paste("\nmin:", min_v,  "max:", max_v),
+                 paste("\nsd:", sd_v),
+                 paste("\nquantile (0.05-0.95):", q05_v, '-', q95_v),
+                 paste("\nskewness:", skew_v), '\n')
+  
+  return(invisible(results))
+}
+
+#This is the vector that will be used to test the function
+v <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50)
+
+printVecInfo(v)
+
+#Step 2: Creating Samples in a Jar
+#4. Create a variable 'jar' that has 50 red and 50 blue marbles.
+#5. Confirm there are 50 red samples by summing.
+#6. Sample 10 marbles from 'jar'. How many are red? What was the percentage?
+
+#Create 'jar' using rep() to replicate 'red' and 'blue' strings 50 times each.
+jar <- c(rep('red', 50), rep('blue', 50))
+
+#Confirm there are 50 'red' strings
+sum(str_detect(jar, 'red'))
+
+#Sampling 10 marbles from jar
+jar_sample <- sample(jar, 10)
+print(jar_sample)
+sum(str_detect(jar_sample, 'red')) #count number of 'red' marbles
+sum(str_detect(jar_sample, 'red'))/length(jar_sample) #percentage of 'red' marbles
+
+
+#7. Replicate sample drawing 20 times. Then, use printVecInfo to check the distribution, and generate #a histogram.  
+sample20 <- replicate(20, mean(str_detect(sample(jar, 10, replace = TRUE), pattern = 'red')))
+
+printVecInfo(sample20)
+
+hist(sample20)
+
+#8. Repeat exercise 7 but drawing 20 samples 100 times. 
+sample100 <- replicate(100, mean(str_detect(sample(jar, 20, replace = TRUE), pattern = 'red')))
+
+printVecInfo(sample100)
+
+hist(sample100)
+
+#9. Repeat exercise 8 but drawing 100 samples 100 times.
+sample10000 <- replicate(100, mean(str_detect(sample(jar, 100, replace = TRUE), pattern = 'red')))
+
+printVecInfo(sample10000)
+
+hist(sample10000)
+
+#Step 3: Explore the airquality dataset
+#10. Store the air quality dataset into a temporary variable.
+#11. Clean the dataset by removing NAs.
+#12. Explore the Ozone, Wind, and Temp columns using printVecInfo and create a histogram of each.
+
+#Store the dataset into variable 'aq'
+aq <- airquality
+
+#Remove NAs
+aq <- na.omit(aq)
+
+#Explore the dataset... 
+printVecInfo(aq$Ozone)
+printVecInfo(aq$Wind)
+printVecInfo(aq$Temp)
+
+#...and create histograms
+hist(aq$Ozone)
+
+hist(aq$Wind)
+
+hist(aq$Temp)
+```
