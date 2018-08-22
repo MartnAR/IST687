@@ -1,0 +1,139 @@
+---
+title: "Alonso_Week 5 Homework Assignment"
+author: "Martin Alonso"
+date: "8/16/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+IST687 Introduction to Data Science: Week 5 Homework.
+
+JSON and tapply Homework: Accident Analysis
+
+###Part 1: The Code
+```{r eval = FALSE}
+require(RJSONIO)
+require(RCurl)
+
+#Step 1: Load the data
+url <- 'http://data.maryland.gov/api/views/pdvh-tf2u/rows.json?accessType=DOWNLOAD'
+apiResult <- getURL(url)
+df <- fromJSON(apiResult)
+
+accidents <- df[[2]]
+numRows <- length(accidents)
+
+#There are 'NULL' values in the JSON file that need to be replaced with NA. 
+accidents <- sapply(accidents, function(x) ifelse(x == 'NULL', NA, x))
+dfAccident <- data.frame(matrix(unlist(accidents), nrow = numRows, byrow = T), stringsAsFactors = F) 
+
+#The data.frame has successfully been imported.
+
+#Step 2: Clean the data
+#Remove the first 8 columns, and rename the remaining ones. 
+dfAccident <- dfAccident[-1:-8]
+namesOfColumns <- c("CASE_NUMBER", "BARRACK", "ACC_DATE", "ACC_TIME", "ACC_TIME_CODE", "DAY_OF_WEEK", "ROAD", "INTERSECT_ROAD", "DIST_FROM_INTERSECT", "DIST_DIRECTION", "CITY_NAME", "COUNTY_CODE", "COUNTY_NAME", "VEHICLE_COUNT", "PROP_DEST", "INJURY", "COLLISION_WITH_1", "COLLISION_WITH_2")
+
+names(dfAccident) <- namesOfColumns
+
+#Remove spaces from columns
+dfAccident <- data.frame(lapply(dfAccident, function(x) gsub("\\s+", "", x)), stringsAsFactors = F)
+
+str(dfAccident)
+
+#Step 3: Understand the data using SQL (via SQLDF)
+require(sqldf)
+
+#Answer the following questions:
+#How many accidents happened on Sunday?
+sqldf("SELECT COUNT(1) AS NUM_SUNDAYS FROM dfAccident WHERE DAY_OF_WEEK = 'SUNDAY'")
+#2,373 accidents happened on Sundays. 
+
+#How many accidents had injuries (might need to remove NAs from data).
+#By having "INJURY = 'YES'" in the WHERE clause, we omit both NAs and "INJURY = 'NO'".  
+sqldf("SELECT COUNT(1) AS NUM_INJURIES FROM dfAccident WHERE INJURY = 'YES'")
+#6,433 accidents resulted in injuries. 
+
+#List the injuries by day
+sqldf("SELECT DAY_OF_WEEK, COUNT(1) AS NUM_INJURIES FROM dfAccident WHERE INJURY = 'YES' GROUP BY DAY_OF_WEEK")
+
+
+#Step 4: Understand the data using tapply()
+#Answer the following questions and compare results with the previous Step.
+#How many accidents happened on Sunday?
+tapply(dfAccident[dfAccident$DAY_OF_WEEK == 'SUNDAY', ]$DAY_OF_WEEK, dfAccident[dfAccident$DAY_OF_WEEK == 'SUNDAY', ]$DAY_OF_WEEK, length)
+#2,373 accidents happened on Sundays; the same number as when using 'sqldf()'.
+
+#How many accidents had injuries (might need to remove NAs from data)
+tapply(dfAccident[dfAccident$INJURY == 'YES', ]$INJURY, dfAccident[dfAccident$INJURY == 'YES', ]$INJURY, length)
+#Likewise, the 'tapply()' function shows 6,433 accidents with injuries, same number as when using the 'sqldf()' function.  
+
+#List the injuries by day
+tapply(dfAccident[dfAccident$INJURY == 'YES', ]$INJURY, dfAccident[dfAccident$INJURY == 'YES', ]$DAY_OF_WEEK, length)
+```
+
+
+###Part 2: Running the Code
+```{r}
+require(RJSONIO)
+require(RCurl)
+
+#Step 1: Load the data
+url <- 'http://data.maryland.gov/api/views/pdvh-tf2u/rows.json?accessType=DOWNLOAD'
+apiResult <- getURL(url)
+df <- fromJSON(apiResult)
+
+accidents <- df[[2]]
+numRows <- length(accidents)
+
+#There are 'NULL' values in the JSON file that need to be replaced with NA. 
+accidents <- sapply(accidents, function(x) ifelse(x == 'NULL', NA, x))
+dfAccident <- data.frame(matrix(unlist(accidents), nrow = numRows, byrow = T), stringsAsFactors = F) 
+
+#The data.frame has successfully been imported.
+
+#Step 2: Clean the data
+#Remove the first 8 columns, and rename the remaining ones. 
+dfAccident <- dfAccident[-1:-8]
+namesOfColumns <- c("CASE_NUMBER", "BARRACK", "ACC_DATE", "ACC_TIME", "ACC_TIME_CODE", "DAY_OF_WEEK", "ROAD", "INTERSECT_ROAD", "DIST_FROM_INTERSECT", "DIST_DIRECTION", "CITY_NAME", "COUNTY_CODE", "COUNTY_NAME", "VEHICLE_COUNT", "PROP_DEST", "INJURY", "COLLISION_WITH_1", "COLLISION_WITH_2")
+
+names(dfAccident) <- namesOfColumns
+
+#Remove spaces from columns
+dfAccident <- data.frame(lapply(dfAccident, function(x) gsub("\\s+", "", x)), stringsAsFactors = F)
+
+str(dfAccident)
+
+#Step 3: Understand the data using SQL (via SQLDF)
+require(sqldf)
+
+#Answer the following questions:
+#How many accidents happened on Sunday?
+sqldf("SELECT COUNT(1) AS NUM_SUNDAYS FROM dfAccident WHERE DAY_OF_WEEK = 'SUNDAY'")
+#2,373 accidents happened on Sundays. 
+
+#How many accidents had injuries (might need to remove NAs from data).
+#By having "INJURY = 'YES'" in the WHERE clause, we omit both NAs and "INJURY = 'NO'".  
+sqldf("SELECT COUNT(1) AS NUM_INJURIES FROM dfAccident WHERE INJURY = 'YES'")
+#6,433 accidents resulted in injuries. 
+
+#List the injuries by day
+sqldf("SELECT DAY_OF_WEEK, COUNT(1) AS NUM_INJURIES FROM dfAccident WHERE INJURY = 'YES' GROUP BY DAY_OF_WEEK")
+
+
+#Step 4: Understand the data using tapply()
+#Answer the following questions and compare results with the previous Step.
+#How many accidents happened on Sunday?
+tapply(dfAccident[dfAccident$DAY_OF_WEEK == 'SUNDAY', ]$DAY_OF_WEEK, dfAccident[dfAccident$DAY_OF_WEEK == 'SUNDAY', ]$DAY_OF_WEEK, length)
+#2,373 accidents happened on Sundays; the same number as when using 'sqldf()'.
+
+#How many accidents had injuries (might need to remove NAs from data)
+tapply(dfAccident[dfAccident$INJURY == 'YES', ]$INJURY, dfAccident[dfAccident$INJURY == 'YES', ]$INJURY, length)
+#Likewise, the 'tapply()' function shows 6,433 accidents with injuries, same number as when using the 'sqldf()' function.  
+
+#List the injuries by day
+tapply(dfAccident[dfAccident$INJURY == 'YES', ]$INJURY, dfAccident[dfAccident$INJURY == 'YES', ]$DAY_OF_WEEK, length)
+```
