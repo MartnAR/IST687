@@ -1,0 +1,207 @@
+---
+title: "Alonso_Week 6 Homework Assignment"
+author: "Martin Alonso"
+date: "8/23/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+IST687 Introduction to Data Science: Week 6 Homework.
+
+Visualization and air quality analysis.
+
+###Part 1: The Code
+```{r eval = FALSE}
+#Load the packages that will be used in this exercise. 
+require(ggplot2)
+require(dplyr)
+require(tidyr)
+require(scales)
+
+#Step 1: Loading the air quality data.
+air <- airquality
+
+#Let's check the data. The dataset has 153 rows and 6 columns.
+dim(air)
+str(air)
+head(air)
+
+#Step 2: Cleaning the data.
+#There are NAs in the data. How many are there in total?
+summary(air)
+
+#The Ozone column has 37 NAs (24%), while the Solar.R column has 7 NAs (4%)
+#Because the Ozone column presents two outliers, median replacement seems to be preferred. However, the Solar.R column will use mean replacement, since the data is more evenly spread and does not present outliers.
+air$Ozone[is.na(air$Ozone)] <- median(air$Ozone, na.rm = T)
+air$Solar.R[is.na(air$Solar.R)] <- mean(air$Solar.R, na.rm = T)
+
+#Making sure that there are no NAs in the dataset.
+summary(air)
+
+#To make the dataset easier to work with in the following steps, I'll adopt Hadley Wickham's TidyR principle.
+air_gathered <- gather(air, key = Field, value = Measurement, c(-Month, -Day)) 
+
+#Step 3: Understand the data distribution.
+#Create the following visualizations:
+#3.1 - Histograms for each variable.
+ggplot(air_gathered, aes(Measurement, fill = Field)) + 
+  geom_histogram() + 
+  facet_wrap(~Field, ncol = 2, scales = c('free')) +
+  theme(legend.position = 'hide')
+
+#3.2 - Boxplot for Ozone.
+ggplot(air_gathered %>% filter(Field == 'Ozone'), aes(y = Measurement, group = 1)) +
+  geom_boxplot()
+
+#3.2 - Boxplot for Wind.
+ggplot(air_gathered %>% filter(Field == 'Wind'), aes(y = Measurement, group = 1)) +
+  geom_boxplot()
+
+#Explore how the data changes over time. 
+#The data is from 1973, so a year column needs to be added and then concatenated with Month and Day to create a time series.
+air_gathered$Year <- 1973
+air_gathered$Date <- as.Date(paste0(air_gathered$Year, '-', air_gathered$Month, '-', air_gathered$Day))
+
+#We'll keep only the Date, Day, Field, and Measurement columns.
+air_gathered <- air_gathered %>% select(Date, Day, Field, Measurement)
+
+#Now to do some time series analysis.
+#First we'll check each field individually...
+ggplot(air_gathered, aes(x = Date, y = Measurement)) + 
+  geom_line() + 
+  facet_wrap(~Field, scales = 'free_y') #by using scales = 'free_y', each Measurement has it's own defined y-axis while maintaining the same Date scale on the x-axis.
+
+#...Now let's check all measurements together.
+ggplot(air_gathered, aes(x = Date, y = Measurement, color = Field)) + 
+  geom_line()
+
+#Step 4: Look at the data via a heatmap.
+#We'll create a heat map to show how the data varies by day.
+ggplot(air_gathered, aes(x = Day, y = Field, fill = Measurement, group = Field)) + geom_tile() + scale_fill_gradient(low = 'blue', high = 'red')
+
+#The problem is that the fields are not on the same scale, so we can't see real change across the different fields.
+#So let's normalize all the measurements on a 0 to 100 scale.
+air_gathered <- air_gathered %>% group_by(Field, Day) %>%
+  mutate(Avg_Measurement = mean(Measurement)) %>% 
+  ungroup() %>% group_by(Field) %>%
+  mutate(Measurement_Norm = rescale(Measurement, to = c(0, 100)))
+
+ggplot(air_gathered, aes(x = Day, y = Field, fill = Measurement_Norm, group = Field)) + geom_tile() + scale_fill_gradient(low = 'blue', high = 'red')
+
+#We can now see more clearly how Temperature, Wind, and Solar.R affect Ozone.
+
+#Step 5: Create a scatter plot. 
+#We'll create a scatter plot with Wind on the x-axis, Temperature on the y-axis, dot size representing Ozone, and dot color representing Solar.R. 
+#Because of this, we will revert to using the air dataset rather than air_gathered.
+ggplot(air, aes(Wind, Temp)) + geom_point(aes(size = Ozone, color = Solar.R))
+
+#Step 6: Final analysis.
+#1. Do you see any patterns after exploring the data?
+#   Yes, from the last plot, we can see that Wind and Temperature are inversely correlated and, as Temperature rises and Wind decreases, Ozone and Solar.R increase as well, though these two also tend to decrease as Wind increases, regardless of Temperature.
+
+#2. What was the most useful visualization?
+#   The most useful one was the heatmap which was the first to indicate that there was a relationship between all measurements. However, the scatter plot was the one to truly show the relationship between the four variables. 
+
+```
+
+
+###Part 2: Running the Code
+```{r}
+#Load the packages that will be used in this exercise. 
+require(ggplot2)
+require(dplyr)
+require(tidyr)
+require(scales)
+
+#Step 1: Loading the air quality data.
+air <- airquality
+
+#Let's check the data. The dataset has 153 rows and 6 columns.
+dim(air)
+str(air)
+head(air)
+
+#Step 2: Cleaning the data.
+#There are NAs in the data. How many are there in total?
+summary(air)
+
+#The Ozone column has 37 NAs (24%), while the Solar.R column has 7 NAs (4%)
+#Because the Ozone column presents two outliers, median replacement seems to be preferred. However, the Solar.R column will use mean replacement, since the data is more evenly spread and does not present outliers.
+air$Ozone[is.na(air$Ozone)] <- median(air$Ozone, na.rm = T)
+air$Solar.R[is.na(air$Solar.R)] <- mean(air$Solar.R, na.rm = T)
+
+#Making sure that there are no NAs in the dataset.
+summary(air)
+
+#To make the dataset easier to work with in the following steps, I'll adopt Hadley Wickham's TidyR principle.
+air_gathered <- gather(air, key = Field, value = Measurement, c(-Month, -Day)) 
+
+#Step 3: Understand the data distribution.
+#Create the following visualizations:
+#3.1 - Histograms for each variable.
+ggplot(air_gathered, aes(Measurement, fill = Field)) + 
+  geom_histogram() + 
+  facet_wrap(~Field, ncol = 2, scales = c('free')) +
+  theme(legend.position = 'hide')
+
+#3.2 - Boxplot for Ozone.
+ggplot(air_gathered %>% filter(Field == 'Ozone'), aes(y = Measurement, group = 1)) +
+  geom_boxplot()
+
+#3.2 - Boxplot for Wind.
+ggplot(air_gathered %>% filter(Field == 'Wind'), aes(y = Measurement, group = 1)) +
+  geom_boxplot()
+
+#Explore how the data changes over time. 
+#The data is from 1973, so a year column needs to be added and then concatenated with Month and Day to create a time series.
+air_gathered$Year <- 1973
+air_gathered$Date <- as.Date(paste0(air_gathered$Year, '-', air_gathered$Month, '-', air_gathered$Day))
+
+#We'll keep only the Date, Day, Field, and Measurement columns.
+air_gathered <- air_gathered %>% select(Date, Day, Field, Measurement)
+
+#Now to do some time series analysis.
+#First we'll check each field individually...
+ggplot(air_gathered, aes(x = Date, y = Measurement)) + 
+  geom_line() + 
+  facet_wrap(~Field, scales = 'free_y') #by using scales = 'free_y', each Measurement has it's own defined y-axis while maintaining the same Date scale on the x-axis.
+
+#...Now let's check all measurements together.
+ggplot(air_gathered, aes(x = Date, y = Measurement, color = Field)) + 
+  geom_line()
+
+#Step 4: Look at the data via a heatmap.
+#We'll create a heat map to show how the data varies by day.
+ggplot(air_gathered, aes(x = Day, y = Field, fill = Measurement, group = Field)) + geom_tile() + scale_fill_gradient(low = 'blue', high = 'red')
+
+#The problem is that the fields are not on the same scale, so we can't see real change across the different fields.
+#So let's normalize all the measurements on a 0 to 100 scale.
+air_gathered <- air_gathered %>% group_by(Field, Day) %>%
+  mutate(Avg_Measurement = mean(Measurement)) %>% 
+  ungroup() %>% group_by(Field) %>%
+  mutate(Measurement_Norm = rescale(Measurement, to = c(0, 100)))
+
+ggplot(air_gathered, aes(x = Day, y = Field, fill = Measurement_Norm, group = Field)) + geom_tile() + scale_fill_gradient(low = 'blue', high = 'red')
+
+#We can now see more clearly how Temperature, Wind, and Solar.R affect Ozone.
+
+#Step 5: Create a scatter plot. 
+#We'll create a scatter plot with Wind on the x-axis, Temperature on the y-axis, dot size representing Ozone, and dot color representing Solar.R. 
+#Because of this, we will revert to using the air dataset rather than air_gathered.
+ggplot(air, aes(Wind, Temp)) + geom_point(aes(size = Ozone, color = Solar.R))
+
+#Step 6: Final analysis.
+#1. Do you see any patterns after exploring the data?
+#   Yes, from the last plot, we can see that Wind and Temperature are inversely correlated and, as Temperature rises and Wind decreases, Ozone and Solar.R increase as well, though these two also tend to decrease as Wind increases, regardless of Temperature.
+
+#2. What was the most useful visualization?
+#   The most useful one was the heatmap which was the first to indicate that there was a relationship between all measurements. However, the scatter plot was the one to truly show the relationship between the four variables. 
+
+```
+
+
+###Sources
+#### https://vita.had.co.nz/papers/tidy-data.pdf
