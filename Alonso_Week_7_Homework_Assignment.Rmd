@@ -1,0 +1,33 @@
+---
+title: "Alonso_Week 7 Homework Assignment"
+author: "Martin Alonso"
+date: "8/30/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+IST687 Introduction to Data Science: Week 7 Homework.
+
+Map (S)mashing
+
+###Part 1: The Code
+```{r eval = FALSE}
+require(ggplot2)
+require(ggmap)
+require(readxl)
+require(gdata)
+require(dplyr)
+
+
+
+```
+
+
+### Part 2: Running the Code
+```{r}
+
+```
+
