@@ -15,12 +15,97 @@ Map (S)mashing
 
 ###Part 1: The Code
 ```{r eval = FALSE}
+# We're loading all the packages that will be needed for this exercise.
 require(ggplot2)
 require(ggmap)
 require(readxl)
 require(gdata)
 require(dplyr)
+require(zipcode)
 
+# Step 1: Load the Data. 
+# Load the MedianZIP_2_2_2.xlsx file.
+dat <- read_excel('MedianZIP_2_2_2.xlsx')
+
+# Let's take a quick survey of the data. 
+str(dat)
+head(dat)
+summary(dat)
+
+# Looks like the column names will need to be updated and the second to fourth column will need to be converted to numerical type.
+names <- dat[1, ]
+colnames(dat) <- names
+dat <- dat[-1, ]
+
+numdat <- colnames(dat[, 2:4])
+for(i in numdat){
+  dat[[i]] <- as.numeric(dat[[i]])
+  dat[[i]][is.na(dat[[i]])] <- median(dat[[i]], na.rm = T)
+}
+
+# Let's check once again that the data is correct.
+str(dat)
+
+# Now let's upload the zipcode data, merge the data, and remove Alaska and Hawaii.
+data(zipcode)
+dat$zip <- clean.zipcodes(dat$Zip)
+
+zip_comp <- merge(dat, zipcode, by = 'zip')
+zip_comp <- zip_comp %>%
+  filter(!state %in% c('AK', 'HI'))
+
+
+#Step 2: Show income & population per state.
+med_dat <- zip_comp %>%
+  group_by(state) %>% 
+  summarize(mean_med_income = mean(Median), 
+            tot_pop = sum(Pop)) 
+
+# Add the state names and convert to lower case. 
+med_dat$stateName <- state.name[match(med_dat$state, state.abb)]
+med_dat$stateName <- tolower(med_dat$stateName)
+
+us <- map_data("state")
+
+# Time to map average median income by state. We'll color code the map according to the median income. 
+ggplot(med_dat, aes(map_id = stateName)) + 
+  geom_map(map = us, aes(fill = med_dat$mean_med_income)) + 
+  expand_limits(x = us$long, y = us$lat) +
+  coord_map() +
+  labs(x = 'Long', y = 'Lat', fill = 'Income') + 
+  ggtitle('Avg median income by state')
+
+# And now we'll do the same by population. 
+ggplot(med_dat, aes(map_id = stateName)) + 
+  geom_map(map = us, aes(fill = med_dat$tot_pop)) + 
+  expand_limits(x = us$long, y = us$lat) +
+  coord_map() +
+  labs(x = 'Long', y = 'Lat', fill = 'Population') + 
+  ggtitle('Population by state')
+
+
+# Step 3: Show income per zipcode.
+zip_comp$stateName <- state.name[match(zip_comp$state, state.abb)]
+zip_comp$stateName <- tolower(zip_comp$stateName)
+
+ggplot(zip_comp, aes(map_id = stateName)) +
+  geom_map(map = us, fill = 'black', colour = 'white') + 
+  expand_limits(x = us$long, y = us$lat) +
+  geom_point(data = zip_comp, aes(zip_comp$longitude, zip_comp$latitude, color = zip_comp$Median)) +
+  coord_map() +
+  labs(x = 'Long', y = 'Lat', fill = 'Income') + 
+  ggtitle('Median Income per Zipcode')
+
+# Step 4: Show zipcode density.
+ggplot(zip_comp, aes(map_id = stateName)) +
+  geom_map(map = us, fill = 'black', colour = 'white') + 
+  expand_limits(x = us$long, y = us$lat) +
+  stat_density2d(data = zip_comp, aes(zip_comp$longitude, zip_comp$latitude)) +
+  coord_map() +
+  labs(x = 'Long', y = 'Lat') + 
+  ggtitle('Zipcode Density')
+
+# Step 5: Zoom in to the region around NYC. 
 
 
 ```
