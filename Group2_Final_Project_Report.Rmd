@@ -1,0 +1,189 @@
+---
+title: "Final Project Report"
+subtitle: "IST687 - Group B2"
+authors: "Amani Alawneh, Martin Alonso, Michael Cerutti, Susannah Cleland"
+date: "9/26/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Table of Contents
+
+### INTRODUCTION
+1. Project Background and Description
+2. Project Scope and Context of this Analysis
+
+### BUSINESS QUESTIONS
+3. What are the Business Questions?
+
+### DATA ACQUISITION, CLEANING, TRANSFORMATION, MUNGING
+4.	Describe your data acquisition process
+5.	What data did you select, all, subset, why
+6.	What was your initial quality assessment
+7.	What fields/variables did you finally decide on, why
+8.	Provide a data dictionary
+9.	Provide data descriptive statistics, rows, str
+10. Did you have to do any cleansing, describe
+11. Interesting findings
+
+### DESCRIPTIVE STATISTICS
+12. Provide demographic statistics – Location
+13. Any early observations, nuggets of interest, interpretation, interesting findings
+14. Graphs, charts, tables, visuals, text
+
+### USE OF MODELING TECHNIQUES
+15. Linear modeling
+16. Support vector
+17. Provide key statistics of interest and interpretation for each model
+
+### OVERALL INTERPRETATION OF RESULTS/ACTIONABLE INSIGHTS
+### REFERENCES
+### APPENDIX – RStudio CODE
+
+# FINAL PROJECT REPORT
+## IST687 - GROUP B2
+ 
+### INTRODUCTION
+1. Project Background and Description  
+This project is an exercise in taking a dataset with a variety of financial metrics to generate questions regarding best business practices and finding ideal customers that would be approved to receive a financial loan.
+ 
+2. Project Scope and Context of this Analysis  
+The scope of this project encompasses data gathered from a Financial Technology (FinTech) Company on customer demographics, current debts, income, applied loan amount, applied duration of loan, loan date, and more.  
+The data also shows which customers had their loans approved and which didn’t; allowing us to look for patterns as to the ideal customer. We paid attention to each customers Credit Score, as well as his financial statements, noting that customers with a higher Credit Score are more likely to be approved for a loan, while customers with large amounts of debt and a low income are not likely to be approved.  
+The data has been encrypted so to protect customer identity.
+
+
+### BUSINESS QUESTIONS
+3. What are the Business Questions?  
+The main question we are trying to answer is what characteristics must a customer have in order to be approved - or rejected - for a loan.  This question aims to build a better model that will automatically approve a customer for a loan based on the data at hand. 
+Another question that we have are which customers are more likely to inquire about taking out a loan. Answering this question will better help me understand were marketing efforts should be focused on in order to try and gain more customers that satisfy the demographic data.  
+Finally, a third question we would like to answer is how many loans can we expect to disburse over the next three months and how much will the month to month profit be.  
+
+
+### DATA ACQUISITION, CLEANSING, TRANSFORMATION, AND MUNGING
+4.	Describe your data acquisition process  
+
+
+5.	What data did you select, all, subset, why  
+
+
+6.	What was your initial quality assessment  
+
+
+7.	What fields/variables did you finally decide on, why  
+
+
+8.	Provide a data dictionary  
+
+
+9.	Provide data descriptive statistics, rows, str  
+
+
+10. Did you have to do any cleansing, describe  
+
+
+11. Interesting findings  
+
+
+
+
+### DESCRIPTIVE STATISTICS
+12. Provide demographic statistics – Location  
+
+
+13. Any early observations, nuggets of interest, interpretation, interesting findings  
+
+
+14. Graphs, charts, tables, visuals, text  
+
+
+
+
+### USE OF MODELING TECHNIQUES
+15. Linear modeling  
+
+
+16. Support vector  
+
+
+17. Provide key statistics of interest and interpretation for each model  
+
+
+
+
+### APPENDIX - RStudio Code
+```{r eval=FALSE}
+#Load the required packages
+packages <- c('pacman', 'readxl', 'dplyr', 'ggplot2', 'tidyr')
+install.packages(packages)
+require(pacman)
+p_load(readxl, dplyr, ggplot2, tidyr)
+
+#Load the dataset into R 
+dat <- read_excel('IST687 Data.xlsx')
+
+#Check the structure of the data, head, and see that there are no NAs.
+str(dat)
+head(dat)
+summary(dat)
+
+#Column names need to be changed to better understand the data. 
+colnames(dat)
+names <- c("person_id", "credit_score", "loan_application_date", "requested_loan_term", "requested_loan_amount", "preapproved_loan_amount", "preapproved_loan_term",  "person_birthdate", "person_marital_status", "person_gender", "person_degree_type_desc", "person_employment_type_desc", "industry", "estimated_net_income", "actual_net_income", "monthly_debt_capacity", "decision_status", "loan_disbursement_date", "first_repayment_date", "loan_amount", "approved_loan_rate", "approved_nominal_rate", "approved_interest_amount")
+colnames(dat) <- names
+
+#Create month variable to better bin the data for month-to-month analysis.
+#We'll also calculate the age and bin them in groups of ten years.
+dat <- dat %>% mutate(age = as.numeric((Sys.Date() - as.Date(person_birthdate))/365),
+                 		  age_bins = as.character(cut(age, breaks = c(21, 31, 41, 51, 61, 71, 81, 91),
+                                 	labels = c('21-30', '31-40', '41-50', '51-60', '61-70', '71-80', '81-90'))),
+                  	loan_application_code_month = ifelse(month(dat$loan_application_date) < 10, paste0(year(dat$loan_application_date), 0, month(dat$loan_application_date)), paste0(year(dat$loan_application_date), month(dat$loan_application_date))), loan_disbursement_code_month = ifelse(month(dat$loan_disbursement_date) < 10, paste0(year(dat$loan_disbursement_date), 0, month(dat$loan_disbursement_date)), paste0(year(dat$loan_disbursement_date), month(dat$loan_disbursement_date))))
+
+#Demographic distributions
+#Applications per month by gender
+ggplot(dat, aes(loan_application_code_month, fill = as.factor(person_gender))) +
+  geom_bar(position = 'stack') +
+  labs(x = 'YearMonth', y = 'Number of Applications', fill = 'Gender') +
+  ggtitle('Applications per Month', subtitle = 'Aug 2017 - Jan 2018') +
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+
+#Application per month by gender - percentage
+ggplot(dat, aes(loan_application_code_month, fill = as.factor(person_gender))) +
+  geom_bar(position = 'fill') +
+  labs(x = 'YearMonth', y = 'Percentage of Applications', fill = 'Gender') +
+  ggtitle('Applications per Month', subtitle = 'Aug 2017 - Jan 2018') +
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+
+#Applicant age distributions by gender
+ggplot(dat, aes(age, fill = as.factor(person_gender))) +
+  geom_density(alpha = 0.3) +
+  facet_wrap(~ person_gender, ncol = 1) +
+  labs(x = 'Customer Age', y = 'Density', fill = 'Gender') +
+  ggtitle('Age Distribution by Gender') +
+  theme(legend.position = 'bottom', plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+# Count by degree
+ggplot(dat, aes(reorder(person_degree_type_desc, table(person_degree_type_desc)[person_degree_type_desc]))) +
+  geom_bar() +
+  coord_flip() +
+  labs(y = 'Customer Count', x = 'Degree')
+
+# Count by Line of work
+ggplot(dat, aes(reorder(industry, table(industry)[industry]))) +
+  geom_bar() +
+  coord_flip() +
+  labs(x = 'Industry', y = 'Count')
+
+# Count by marital status
+ggplot(dat, aes(reorder(person_marital_status, table(person_marital_status)[person_marital_status]))) +
+  geom_bar() +
+  coord_flip() +
+  labs(x= 'Marital Status', y = 'Count')
+
+# Credit score distribution
+ggplot(dat, aes(credit_score)) + geom_histogram()
+
+
+```
