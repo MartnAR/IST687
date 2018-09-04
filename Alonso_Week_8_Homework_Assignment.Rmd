@@ -1,0 +1,26 @@
+---
+title: "Alonso_Week 8 Homework Assignment"
+author: "Martin Alonso"
+date: "9/4/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+IST687 Introduction to Data Science: Week 8 Homework
+
+Making Predictions.
+
+#Part 1: The Code
+```{r eval = FALSE}
+
+
+```
+
+
+#Part 2: Running the Code
+```{r}
+
+```
