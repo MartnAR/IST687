@@ -15,12 +15,147 @@ Making Predictions.
 
 #Part 1: The Code
 ```{r eval = FALSE}
+#1. Load required packages and load the data set. 
+require(RCurl)
+require(gdata)
+require(readxl)
+require(ggplot2)
 
+#Note: reading this URL and loading it resulted in an error. I opted for downloading the data set and loading it from my folder using read_excel from the readxl library. 
+url <- 'http://college.cengage.com/mathematics/brase/understandable_statistics/7e/students/datasets/mlr/excel/mlr01.xls'
+
+#2. Load the data directly from excel. 
+df <- read_excel('mlr01.xls')
+
+#3. Initial data set exploration - reviewing structure, summary, and dimensions
+str(df)
+summary(df)
+dim(df)
+
+#The data set has 8 rows and 4 columns. The columns need to be renamed. 
+#The columns represent, respectively: number of fawn in a given spring, adult antelope population, annual precipitation, how bad the winter was. 
+
+names <- c('fawnPerSpring', 'adultPop', 'annualPrecipitation', 'winterSeverity')
+colnames(df) <- names
+
+#It would also be wise to add a column for Year: which will go from 1 to 8.
+df$year <- seq(1, 8, by = 1)
+
+#4. Data visualization. 
+#Fawn per Spring vs Adult Antelope Population
+ggplot(df, aes(adultPop, fawnPerSpring)) + geom_point() + 
+  labs(x = 'Adult Antelope Population', y = 'Avg Fawn per Spring') + 
+  ggtitle('Adult Antelop Population vs Avg Fawn per Spring')
+
+#Annual Precipitation
+ggplot(df, aes(year, annualPrecipitation)) + geom_line() +
+  labs(x = 'Year', y = 'Annual Precipitation') + 
+  ggtitle('Annual Precipitation', subtitle = 'Years Unknown')
+
+#Winter Severity 
+ggplot(df, aes(year, winterSeverity)) + geom_line() + 
+  labs(x = 'Year', y = 'Winter Severity') +
+  ggtitle('Winter Severity', subtitle = 'Years Unknown')
+
+#5. Creating, running, and reviewing linear models. 
+#Will first verify if severity of winter can predict number of fawn the following spring.
+fawnVsWinter <- lm(fawnPerSpring ~ winterSeverity, data = df)
+summary(fawnVsWinter)
+
+#Winter severity has a p-value of 0.036 - significant at the 0.05 level. However, Adjusted R-squared states that the severity of the previous winter explains 47 percent of the variance of the number of fawn. 
+
+#How about checking the severity of the winter and size of the adult population? 
+fawnVsWinterAdult <- lm(fawnPerSpring ~ winterSeverity + adultPop, data = df)
+summary(fawnVsWinterAdult)
+
+#When we add the adult population, the Adjusted R-Squared explains 84.4 percent of the variance in the number of fawn. However, neither of the explaining variables are significant - severity of winter has a p-value of 0.596 and adult population has a p-value of 0.011. 
+
+#Let's add the remaining column - annual precipitation - to see how it affects the model. 
+fawnVsAll <- lm(fawnPerSpring ~ . - year, data = df)
+summary(fawnVsAll)
+
+#By adding annual precipitation, we are able to explain 95.5 percent of the variance in the number of fawn. Additionally, we find that all variables are significant at a p-value of 0.05; which gives us a very good model. 
+
+#Let's plot the model to see how the variables relate
+ggplot(df, aes(x = adultPop, y = fawnPerSpring)) +
+  geom_point(aes(size = annualPrecipitation, color = as.factor(winterSeverity))) +
+  geom_smooth(method = 'lm', aes(x = adultPop, y = fawnPerSpring)) +
+  labs(x = 'Adult Antelope Population', y = 'Avg Fawn Per Spring', 
+       color = 'Winter Severity', size = 'Annual Precipitation') +
+  ggtitle('Avg Fawn Per Spring vs Adult Pop, Winter Severity,\n and Annual Precipitation')
 
 ```
 
 
 #Part 2: Running the Code
 ```{r}
+#1. Load required packages and load the data set. 
+require(RCurl)
+require(gdata)
+require(readxl)
+require(ggplot2)
+
+#Note: reading this URL and loading it resulted in an error. I opted for downloading the data set and loading it from my folder using read_excel from the readxl library. 
+url <- 'http://college.cengage.com/mathematics/brase/understandable_statistics/7e/students/datasets/mlr/excel/mlr01.xls'
+
+#2. Load the data directly from excel. 
+df <- read_excel('mlr01.xls')
+
+#3. Initial data set exploration - reviewing structure, summary, and dimensions
+str(df)
+summary(df)
+dim(df)
+
+#The data set has 8 rows and 4 columns. The columns need to be renamed. 
+#The columns represent, respectively: number of fawn in a given spring, adult antelope population, annual precipitation, how bad the winter was. 
+
+names <- c('fawnPerSpring', 'adultPop', 'annualPrecipitation', 'winterSeverity')
+colnames(df) <- names
+
+#It would also be wise to add a column for Year: which will go from 1 to 8.
+df$year <- seq(1, 8, by = 1)
+
+#4. Data visualization. 
+#Fawn per Spring vs Adult Antelope Population
+ggplot(df, aes(adultPop, fawnPerSpring)) + geom_point() + 
+  labs(x = 'Adult Antelope Population', y = 'Avg Fawn per Spring') + 
+  ggtitle('Adult Antelop Population vs Avg Fawn per Spring')
+
+#Annual Precipitation
+ggplot(df, aes(year, annualPrecipitation)) + geom_line() +
+  labs(x = 'Year', y = 'Annual Precipitation') + 
+  ggtitle('Annual Precipitation', subtitle = 'Years Unknown')
+
+#Winter Severity 
+ggplot(df, aes(year, winterSeverity)) + geom_line() + 
+  labs(x = 'Year', y = 'Winter Severity') +
+  ggtitle('Winter Severity', subtitle = 'Years Unknown')
+
+#5. Creating, running, and reviewing linear models. 
+#Will first verify if severity of winter can predict number of fawn the following spring.
+fawnVsWinter <- lm(fawnPerSpring ~ winterSeverity, data = df)
+summary(fawnVsWinter)
+
+#Winter severity has a p-value of 0.036 - significant at the 0.05 level. However, Adjusted R-squared states that the severity of the previous winter explains 47 percent of the variance of the number of fawn. 
+
+#How about checking the severity of the winter and size of the adult population? 
+fawnVsWinterAdult <- lm(fawnPerSpring ~ winterSeverity + adultPop, data = df)
+summary(fawnVsWinterAdult)
+
+#When we add the adult population, the Adjusted R-Squared explains 84.4 percent of the variance in the number of fawn. However, neither of the explaining variables are significant - severity of winter has a p-value of 0.596 and adult population has a p-value of 0.011. 
+
+#Let's add the remaining column - annual precipitation - to see how it affects the model. 
+fawnVsAll <- lm(fawnPerSpring ~ . - year, data = df)
+summary(fawnVsAll)
+
+#By adding annual precipitation, we are able to explain 95.5 percent of the variance in the number of fawn. Additionally, we find that all variables are significant at a p-value of 0.05; which gives us a very good model. 
+
+#Let's plot the model to see how the variables relate
+ggplot(df, aes(x = adultPop, y = fawnPerSpring)) +
+  geom_point(aes(size = annualPrecipitation, color = as.factor(winterSeverity))) +
+  geom_smooth(method = 'lm', aes(x = adultPop, y = fawnPerSpring)) +
+  labs(x = 'Adult Antelope Population', y = 'Avg Fawn Per Spring', 
+       color = 'Winter Severity', size = 'Annual Precipitation') +
+  ggtitle('Avg Fawn Per Spring vs Adult Pop, Winter Severity,\n and Annual Precipitation')
 
 ```
