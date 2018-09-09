@@ -8,6 +8,10 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+install.packages('pacman')
+library(pacman)
+p_install('readxl', 'dplyr', 'ggplot2', 'tidyr')
+p_load(readxl, dplyr, ggplot2, tidyr)
 ```
 
 ## Table of Contents
@@ -64,15 +68,22 @@ Finally, a third question we would like to answer is how many loans can we expec
 
 
 ### DATA ACQUISITION, CLEANSING, TRANSFORMATION, AND MUNGING
-4.	Describe your data acquisition process  
+4.	Describe your data acquisition process.  
+The data was acquired with permission from Martin's workplace. It provides a data from customers who applied for a personal loan from September 2017 to January 2018. The data was anonymized in order to protect customer private information.  
+We loaded the data using the `read_excel()` function from the `read_excel()` package.
 
+```{r eval = FALSE}
+dat <- read_excel('IST687 Data.xlsx')
+```
+  
+  
+5.	What data did you select, all, subset, why?  
+We selected a subset of the data that encompasses customers who applied for a loan - regardless of whether they were approved for the loan or disbursed the loan - from September 2017 to January 2018. 
 
-5.	What data did you select, all, subset, why  
-
-
-6.	What was your initial quality assessment  
-
-
+6.	What was your initial quality assessment?  
+The first quality assessment was to check that there was no missing data within each column. NAs where replaced accordingly based on the column information. For example, for loan_disbursement_date, for those customers who weren't approved or didn't accept the load, NAs where replaced with 0 - or 01/01/1900 in Excel - to identify these customers.
+Fortunately, this was not the case for most of the columns like applied_loan_rate, loan_disbursement_amount which all had no missing data whatsoever.  
+  
 7.	What fields/variables did you finally decide on, why  
 
 
