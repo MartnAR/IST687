@@ -8,10 +8,6 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-install.packages('pacman')
-library(pacman)
-p_install(c(readxl, dplyr, ggplot2, tidyr))
-p_load(readxl, dplyr, ggplot2, tidyr)
 ```
 
 ## Table of Contents
@@ -79,6 +75,7 @@ dat <- read_excel('IST687 Data.xlsx')
   
 5.	What data did you select, all, subset, why?  
 We selected a subset of the data that encompasses customers who applied for a loan - regardless of whether they were approved for the loan or disbursed the loan - from September 2017 to January 2018. 
+These months were selected as, by this point, the company had been active for six months and we wanted to check what kinds of customers were being attracted to the company or what kinds of loans - length and amount - they were asking for. 
 
 6.	What was your initial quality assessment?  
 The first quality assessment was to check that there was no missing data within each column. NAs where replaced accordingly based on the column information. For example, for loan_disbursement_date, for those customers who weren't approved or didn't accept the load, NAs where replaced with 0 - or 01/01/1900 in Excel - to identify these customers.
