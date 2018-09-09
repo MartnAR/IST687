@@ -10,7 +10,7 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 install.packages('pacman')
 library(pacman)
-p_install('readxl', 'dplyr', 'ggplot2', 'tidyr')
+p_install(c(readxl, dplyr, ggplot2, tidyr))
 p_load(readxl, dplyr, ggplot2, tidyr)
 ```
 
