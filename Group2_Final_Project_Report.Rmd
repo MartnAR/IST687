@@ -8,6 +8,9 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+require(readxl)
+require(dplyr)
+require(ggplot2)
 ```
 
 ## Table of Contents
@@ -68,10 +71,10 @@ Finally, a third question we would like to answer is how many loans can we expec
 The data was acquired with permission from Martin's workplace. It provides a data from customers who applied for a personal loan from September 2017 to January 2018. The data was anonymized in order to protect customer private information.  
 We loaded the data using the `read_excel()` function from the `read_excel()` package.
 
-```{r eval = FALSE}
-dat <- read_excel('IST687 Data.xlsx')
+```{r}
+dat <- data.frame(read_excel('IST687 Data.xlsx'))
+head(dat)
 ```
-  
   
 5.	What data did you select, all, subset, why?  
 We selected a subset of the data that encompasses customers who applied for a loan - regardless of whether they were approved for the loan or disbursed the loan - from September 2017 to January 2018. 
@@ -82,16 +85,62 @@ The first quality assessment was to check that there was no missing data within 
 Fortunately, this was not the case for most of the columns like applied_loan_rate, loan_disbursement_amount which all had no missing data whatsoever.  
   
 7.	What fields/variables did you finally decide on, why  
+We selected 23 variables which include a mixture of demographic data and loan data - allowing us to identify different customers, what possible background information they might have, and what type of loan they were seeking. 
+Aside from `person_id`, our demographic data included `credit_score, person_birthdate` (from which we calculated person_age), `person_marital_status, person_gender, person_degree_type_desc, person_employment_type_desc`, and `industry`.  
+The remaining columns were harbored information about the loan. For columns focused on the date - i.e `loan_application_date, loan_disbursement_date`, and `first_repayment_date` - the format was `yyyy-mm-dd`. Columns regarding the loan amount and other monetory data - i.e `requested_loan_amount, preapproved_loan_amount, estimated_net_income, actual_net_income, monthly_debt_capacity, loan_amount` - the data is in US dollars. Data regarding the time it will take to pay off the loan - i.e `requested_loan_term, preapproved_loan_term` - is in months. Rate data is on a percentage base.  
+Though we feel that all this information adds insight on whether a person is approved for a loan, we will not be using all the available information to build our final model.  
 
+```{r eval=FALSE}
+colnames(dat)
+names <- c("person_id", "credit_score", "loan_application_date", "requested_loan_term", "requested_loan_amount", "preapproved_loan_amount", "preapproved_loan_term",  "person_birthdate", "person_marital_status", "person_gender", "person_degree_type_desc", "person_employment_type_desc", "industry", "estimated_net_income", "actual_net_income", "monthly_debt_capacity", "decision_status", "loan_disbursement_date", "first_repayment_date", "loan_amount", "approved_loan_rate", "approved_nominal_rate", "approved_interest_amount")
+colnames(dat) <- names
+```
 
 8.	Provide a data dictionary  
+```{r table2, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+tabl <- "
+|Index | Column Name  |New Names    |Definition                      |
+|:----:|:------------:|:-----------:|:-------------------------------|
+|  1   |  person_id   | Customer ID |Customer identification number. |
+|  2   |  credit_score| Credit Score|Customer risk credit score.     |
+|  3   |  loan_application_date| Loan Application Date | Date customer applied for a loan.|
+|4|requested_loan_term (in months)|Requested Loan Term | Number of months customer has requested to pay off the loan.|
+|5|requested_loan_amount (in dollars)|Requested Loan Amount| Amount customer wants to borrow.|
+|6|preapproved_loan_amount (in dollars)|Preapproved Loan Amount| Amount customer was preapproved for.|
+|7|preapproved_loan_term (in months)|Preapproved Loan Term | Number of months customer was preapproved for to pay off the loan.|
+|8|person_birthdate|Customer Birthdate| Customer date of birth.|
+|9|person_marital_status|Customer Marital Status|Customer marital status.|
+|10|person_gender|Customer Gender|Customer gender.|
+|11|person_degree_type_desc|Customer Education Degree|Description of customer education degree.|
+|12|person_employment_type_desc|Customer Employment|Whether customer is dependently or independently employed.|
+|13|industry|Customer Industry|Industry in which customer works.|
+|14|estimated_net_income(in dollars)|Estimated Net Income|Estimated customer income after tax.|
+|15|actual_net_income(in dollars)|Actual Net Income|Actual customer income after tax.|
+|16|monthly_debt_capacity (in dollars)|Monthly Debt Income|Amount customer is able to pay on a monthly basis.|
+|17|decision_status|Loan Decision Status|Status of loan decision.|
+|18|loan_disbursement_date|Loan Disbursement Date|Date when loan was taken out.|
+|19|first_repayment_date|First Repayment Date|Date when customer should make first payment.|
+|20|loan_amount(in dollars)|Approved Loan Amount|Accepted loan amount by customer.|
+|21|approved_loan_rate|Approved Loan Rate|Accepted loan rate by customer.|
+|22|approved_nominal_rate|Approved Nominal Rate|Accepted loan nominal rate by customer.|
+|23|approved_interest_amount|Approved Interest Rate|Accepted loan interest rate by customer.|
+"
+cat(tabl)
+```
 
 
 9.	Provide data descriptive statistics, rows, str  
+The complete dataset has 23 variables and 852 observations. The dataset does not have any NA's, meaning that there will be no additional data dropped.  
+The following shows the dimensions and structure of the dataset.  
+```{r}
+dim(dat)
+str(dat)
+```
 
 
 10. Did you have to do any cleansing, describe  
-
+No cleansing was needed as the dataset was already cleaned when collected from Martin's company's SQL repository. There were no errors in the dataset and no missing values.  
+However, we did need to add to columns to represent customer age, and whether the customer accepted the loan or not.  
 
 11. Interesting findings  
 
