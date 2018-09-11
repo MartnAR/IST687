@@ -51,34 +51,32 @@ require(ggplot2)
  
 ### INTRODUCTION
 1. Project Background and Description  
-This project is an exercise in taking a dataset with a variety of financial metrics to generate questions regarding best business practices and finding ideal customers that would be approved to receive a financial loan.
- 
+This project is an exercise in taking a dataset from the 2017-2018 English Premier League season and tries to gauge what factors are able to predict which team is likelier to win; what factors are likely to separate winning teams from losing teams, and what can teams from the bottom of the chart learn from teams at the top.  
+  
 2. Project Scope and Context of this Analysis  
-The scope of this project encompasses data gathered from a Financial Technology (FinTech) Company on customer demographics, current debts, income, applied loan amount, applied duration of loan, loan date, and more.  
-The data also shows which customers had their loans approved and which didn’t; allowing us to look for patterns as to the ideal customer. We paid attention to each customers Credit Score, as well as his financial statements, noting that customers with a higher Credit Score are more likely to be approved for a loan, while customers with large amounts of debt and a low income are not likely to be approved.  
-The data has been encrypted so to protect customer identity.
+The scope of this project encompasses data gathered from the 2017-2018 English Premier League season, with goals scored, goals allowed, shots taken, shots allowed, win record, and other soccer metrics.
+The data shows whether a team won, lost, or drew a game, how many shots did they take and allow, how many fouls they commited, how many goals they scored (both at half-time and end of regular time), and whether they received any yellow or red cards. 
+Obviously, we expect that teams that score more goals tend to win more but, by looking at actual goal differential, we might find that this is not the case. We also want to see whether there are other factors that are pushing a teams' likelihood to win - such as shots taken, shots on goal taken, and corner kicks - as against to allowing an opposing team more chances to score.  
 
 
 ### BUSINESS QUESTIONS
 3. What are the Business Questions?  
-The main question we are trying to answer is what characteristics must a customer have in order to be approved - or rejected - for a loan.  This question aims to build a better model that will automatically approve a customer for a loan based on the data at hand. 
-Another question that we have are which customers are more likely to inquire about taking out a loan. Answering this question will better help me understand were marketing efforts should be focused on in order to try and gain more customers that satisfy the demographic data.  
-Finally, a third question we would like to answer is how many loans can we expect to disburse over the next three months and how much will the month to month profit be.  
+ 
 
 
 ### DATA ACQUISITION, CLEANSING, TRANSFORMATION, AND MUNGING
 4.	Describe your data acquisition process.  
-The data was acquired with permission from Martin's workplace. It provides a data from customers who applied for a personal loan from September 2017 to January 2018. The data was anonymized in order to protect customer private information.  
-We loaded the data using the `read_excel()` function from the `read_excel()` package.
+The data was acquired from `www.football-data.co.uk`, a website that provides free data on soccer coverage from around the world. For this project, we downloaded the csv file for the English Premier League 2017-2018 season. 
+We grabbed the csv url and loaded it into RStudio using the following command: 
 
 ```{r}
-dat <- data.frame(read_excel('IST687 Data.xlsx'))
-head(dat)
+prem <- prem <- read.csv("http://www.football-data.co.uk/mmz4281/1718/E0.csv")
+head(prem)
 ```
   
 5.	What data did you select, all, subset, why?  
-We selected a subset of the data that encompasses customers who applied for a loan - regardless of whether they were approved for the loan or disbursed the loan - from September 2017 to January 2018. 
-These months were selected as, by this point, the company had been active for six months and we wanted to check what kinds of customers were being attracted to the company or what kinds of loans - length and amount - they were asking for. 
+We decided to focus on just a single season of data, selecting data for both the home and away team regarding whether the home team one, lost, or drew, how many goals each team scored both at half-time and end of regulation, how many shots each team took both in general and on goal, corner kicks, fouls committed, yellow and red cards received, and other data such as the date, and referee. 
+We also had different betting odds for all teams and for each match but we decided to drop these columns as they weren't part of the scope of the project. 
 
 6.	What was your initial quality assessment?  
 The first quality assessment was to check that there was no missing data within each column. NAs where replaced accordingly based on the column information. For example, for loan_disbursement_date, for those customers who weren't approved or didn't accept the load, NAs where replaced with 0 - or 01/01/1900 in Excel - to identify these customers.
@@ -93,7 +91,7 @@ Though we feel that all this information adds insight on whether a person is app
 ```{r eval=FALSE}
 colnames(dat)
 names <- c("person_id", "credit_score", "loan_application_date", "requested_loan_term", "requested_loan_amount", "preapproved_loan_amount", "preapproved_loan_term",  "person_birthdate", "person_marital_status", "person_gender", "person_degree_type_desc", "person_employment_type_desc", "industry", "estimated_net_income", "actual_net_income", "monthly_debt_capacity", "decision_status", "loan_disbursement_date", "first_repayment_date", "loan_amount", "approved_loan_rate", "approved_nominal_rate", "approved_interest_amount")
-colnames(dat) <- names
+colnames(data) <- names
 ```
 
 8.	Provide a data dictionary  
@@ -234,7 +232,7 @@ ggplot(dat, aes(reorder(industry, table(industry)[industry]))) +
   labs(x = 'Industry', y = 'Count')
 
 # Count by marital status
-ggplot(dat, aes(reorder(person_marital_status, table(person_marital_status)[person_marital_status]))) +
+ggplot(dataset, aes(reorder(person_marital_status, table(person_marital_status)[person_marital_status]))) +
   geom_bar() +
   coord_flip() +
   labs(x= 'Marital Status', y = 'Count')
