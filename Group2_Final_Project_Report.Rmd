@@ -8,9 +8,10 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-require(readxl)
 require(dplyr)
 require(ggplot2)
+require(formatR)
+require(magrittr)
 ```
 
 ## Table of Contents
@@ -57,88 +58,113 @@ This project is an exercise in taking a dataset from the 2017-2018 English Premi
 The scope of this project encompasses data gathered from the 2017-2018 English Premier League season, with goals scored, goals allowed, shots taken, shots allowed, win record, and other soccer metrics.
 The data shows whether a team won, lost, or drew a game, how many shots did they take and allow, how many fouls they commited, how many goals they scored (both at half-time and end of regular time), and whether they received any yellow or red cards. 
 Obviously, we expect that teams that score more goals tend to win more but, by looking at actual goal differential, we might find that this is not the case. We also want to see whether there are other factors that are pushing a teams' likelihood to win - such as shots taken, shots on goal taken, and corner kicks - as against to allowing an opposing team more chances to score.  
-
-
-### BUSINESS QUESTIONS
+  
+  
+### BUSINESS QUESTIONS  
 3. What are the Business Questions?  
- 
-
-
+   
+  
+  
 ### DATA ACQUISITION, CLEANSING, TRANSFORMATION, AND MUNGING
 4.	Describe your data acquisition process.  
 The data was acquired from `www.football-data.co.uk`, a website that provides free data on soccer coverage from around the world. For this project, we downloaded the csv file for the English Premier League 2017-2018 season. 
-We grabbed the csv url and loaded it into RStudio using the following command: 
+We grabbed the csv url and loaded it into RStudio using the following command:  
 
-```{r}
-prem <- prem <- read.csv("http://www.football-data.co.uk/mmz4281/1718/E0.csv")
+```{r tidy=TRUE}
+url <- "http://www.football-data.co.uk/mmz4281/1718/E0.csv"
+prem <- prem <- read.csv(url, stringsAsFactors = FALSE)
 head(prem)
 ```
+  
   
 5.	What data did you select, all, subset, why?  
 We decided to focus on just a single season of data, selecting data for both the home and away team regarding whether the home team one, lost, or drew, how many goals each team scored both at half-time and end of regulation, how many shots each team took both in general and on goal, corner kicks, fouls committed, yellow and red cards received, and other data such as the date, and referee. 
 We also had different betting odds for all teams and for each match but we decided to drop these columns as they weren't part of the scope of the project. 
 
 6.	What was your initial quality assessment?  
-The first quality assessment was to check that there was no missing data within each column. NAs where replaced accordingly based on the column information. For example, for loan_disbursement_date, for those customers who weren't approved or didn't accept the load, NAs where replaced with 0 - or 01/01/1900 in Excel - to identify these customers.
-Fortunately, this was not the case for most of the columns like applied_loan_rate, loan_disbursement_amount which all had no missing data whatsoever.  
-  
-7.	What fields/variables did you finally decide on, why  
-We selected 23 variables which include a mixture of demographic data and loan data - allowing us to identify different customers, what possible background information they might have, and what type of loan they were seeking. 
-Aside from `person_id`, our demographic data included `credit_score, person_birthdate` (from which we calculated person_age), `person_marital_status, person_gender, person_degree_type_desc, person_employment_type_desc`, and `industry`.  
-The remaining columns were harbored information about the loan. For columns focused on the date - i.e `loan_application_date, loan_disbursement_date`, and `first_repayment_date` - the format was `yyyy-mm-dd`. Columns regarding the loan amount and other monetory data - i.e `requested_loan_amount, preapproved_loan_amount, estimated_net_income, actual_net_income, monthly_debt_capacity, loan_amount` - the data is in US dollars. Data regarding the time it will take to pay off the loan - i.e `requested_loan_term, preapproved_loan_term` - is in months. Rate data is on a percentage base.  
-Though we feel that all this information adds insight on whether a person is approved for a loan, we will not be using all the available information to build our final model.  
+Our first quality assessment was to check that there were no missing values within the dataset.  
+After that, we made sure that the data types were correct, i.e. strings weren't stored as factors, numbers were numeric, and dates were stored as dates.  
+We also made sure that there were no `NULL` values or `NA's`, which fortunately there weren't.  
+Finally, after the assessment was made, we decided to transform the dataset in order to have one row per team per date, renaming the columns, dropping the betting line columns, and adding a flag to signal whether the team in question was the home or away team.  
 
-```{r eval=FALSE}
-colnames(dat)
-names <- c("person_id", "credit_score", "loan_application_date", "requested_loan_term", "requested_loan_amount", "preapproved_loan_amount", "preapproved_loan_term",  "person_birthdate", "person_marital_status", "person_gender", "person_degree_type_desc", "person_employment_type_desc", "industry", "estimated_net_income", "actual_net_income", "monthly_debt_capacity", "decision_status", "loan_disbursement_date", "first_repayment_date", "loan_amount", "approved_loan_rate", "approved_nominal_rate", "approved_interest_amount")
-colnames(data) <- names
+```{r tidy = TRUE}
+
+#Select Home Team and Home team data. 
+premHomeTeams <- prem %>% 
+  dplyr::mutate(HomeAway = 'Home') %>% 
+  dplyr::select(Div, Date, Team1 = HomeTeam, Team2 = AwayTeam, HomeAway, GS = FTHG, GA = FTAG, FTR, HTGS = HTHG, HTGA = HTAG, HTR, Referee, ShotsTaken = HS, ShotsAllowed = AS, ShotsOnTarget = HST, OppShotsOnTarget = AST, FoulsCommitted = HF, FoulsReceived = AF, CornerKicks = HC, OppCornerKicks = AC, YellowCards = HY, OppYellowCards = AY, RedCards = HR, OppRedCards = AR)
+
+#Select Away Team and Away team data.
+premAwayTeams <- prem %>% 
+  dplyr::mutate(HomeAway = 'Away') %>% 
+  dplyr::select(Div, Date, Team1 = AwayTeam, Team2 = HomeTeam, HomeAway, GS = FTAG, GA = FTHG, FTR, HTGS = HTAG, HTGA = HTHG, HTR, Referee, ShotsTaken = AS, ShotsAllowed = HS, ShotsOnTarget = AST, OppShotsOnTarget = HST, FoulsCommitted = AF, FoulsReceived = HF, CornerKicks = AC, OppCornerKicks = HC, YellowCards = AY, OppYellowCards = HY, RedCards = AR, OppRedCards = HR)
+
+#Bind datasets into a new dataset. 
+premTransformed <- premHomeTeams %>% bind_rows(premAwayTeams)
+head(premTransformed)
+
 ```
 
+
+7.	What fields/variables did you finally decide on, why  
+The original dataset had 65 columns and 380 rows. The variables included regarded the league, date, teams playing, referee, match results and goals at half-time and at the end of regulation, statistics for the match, and betting odds for different sites. 
+We transformed this data so as to end with 24 columns and 780 rows, setting on the following columns:  
+* Match Information: `Div, Date, Team1, Team2, HomeAway, Referee`  
+* Match Results: `GS, GA, FTR, HTGS, HTGA, HTR`  
+* Match Statistics: `ShotsTaken, ShotsAllowed, ShotsOnTarget, OppShotsOnTarget, FoulsCommitted, FoulsReceived, CornerKicks, OppCornerKicks, YellowCards, OppYellowCards, RedCards, OppRedCards`  
+
+```{r tidy=TRUE}
+colnames(premTransformed)
+```
+
+
 8.	Provide a data dictionary  
-```{r table2, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+```{r table2, echo=FALSE, message=FALSE, warning=FALSE, results='asis', tidy=TRUE}
 tabl <- "
-|Index | Column Name  |New Names    |Definition                      |
-|:----:|:------------:|:-----------:|:-------------------------------|
-|  1   |  person_id   | Customer ID |Customer identification number. |
-|  2   |  credit_score| Credit Score|Customer risk credit score.     |
-|  3   |  loan_application_date| Loan Application Date | Date customer applied for a loan.|
-|4|requested_loan_term (in months)|Requested Loan Term | Number of months customer has requested to pay off the loan.|
-|5|requested_loan_amount (in dollars)|Requested Loan Amount| Amount customer wants to borrow.|
-|6|preapproved_loan_amount (in dollars)|Preapproved Loan Amount| Amount customer was preapproved for.|
-|7|preapproved_loan_term (in months)|Preapproved Loan Term | Number of months customer was preapproved for to pay off the loan.|
-|8|person_birthdate|Customer Birthdate| Customer date of birth.|
-|9|person_marital_status|Customer Marital Status|Customer marital status.|
-|10|person_gender|Customer Gender|Customer gender.|
-|11|person_degree_type_desc|Customer Education Degree|Description of customer education degree.|
-|12|person_employment_type_desc|Customer Employment|Whether customer is dependently or independently employed.|
-|13|industry|Customer Industry|Industry in which customer works.|
-|14|estimated_net_income(in dollars)|Estimated Net Income|Estimated customer income after tax.|
-|15|actual_net_income(in dollars)|Actual Net Income|Actual customer income after tax.|
-|16|monthly_debt_capacity (in dollars)|Monthly Debt Income|Amount customer is able to pay on a monthly basis.|
-|17|decision_status|Loan Decision Status|Status of loan decision.|
-|18|loan_disbursement_date|Loan Disbursement Date|Date when loan was taken out.|
-|19|first_repayment_date|First Repayment Date|Date when customer should make first payment.|
-|20|loan_amount(in dollars)|Approved Loan Amount|Accepted loan amount by customer.|
-|21|approved_loan_rate|Approved Loan Rate|Accepted loan rate by customer.|
-|22|approved_nominal_rate|Approved Nominal Rate|Accepted loan nominal rate by customer.|
-|23|approved_interest_amount|Approved Interest Rate|Accepted loan interest rate by customer.|
+|Index | Column Name       |New Names                |Definition                            |
+|:----:|:-----------------:|:------------------------|:-------------------------------------|
+|  1   |  Div              | Division                | Football league division.            |
+|  2   |  Date             | Match Day               | Day match was played.                |
+|  3   |  Team1            | Team                    | First team of the match.             |
+|  4   |  Team2            | Opponent                | Opposing team of the match.          |
+|  5   |  HomeAway         | Home-Away Flag          | Team1 Home-Away identifier.          |
+|  6   |  GS               | Goals Scored            | Goals scored by Team1.               |
+|  7   |  GA               | Goals Allowed           | Goals allowed by Team1.              |
+|  8   |  FTR              | Full Time Result        | Result at the end of regulation.     |
+|  9   |  HTGS             | Half-time Goals Scored  | Goals scored at half-time by Team1.  |
+| 10   |  HTGA             | Half-time Goals Allowed | Goals allowed at half-time by Team1. |
+| 11   |  HTR              | Half-time Result        | Result at half-time.                 |
+| 12   |  Referee          | Game Referee            | Referee for the match.               |
+| 13   |  ShotsTaken       | Shots taken             | Shots taken by Team 1.               |
+| 14   |  ShotsAllowed     | Shots allowed           | Shots allowed by Team 1.             |
+| 15   |  ShotsOnTarget    | Shots on target         | Shots on goal taken by Team 1.       |
+| 16   |  OppShotsOnTarget | Shots on target allowed | Shots on goal allowed by Team 1.     |
+| 17   |  FoulsCommitted   | Fouls committed         | Fouls committed by Team 1.           |
+| 18   |  FoulsReceived    | Fouls received          | Fouls committed by Opposing Team.    |
+| 19   |  CornerKicks      | Corner kicks            | Corner kicks taken by Team 1.        |
+| 20   |  OppCornerKicks   | Opponent corner kicks   | Corner kicks taken by Opposing Team. |
+| 21   |  YellowCards      | Yellow cards            | Yellow cards given to Team 1.        |
+| 22   |  OppYellowCards   | Opponent yellow cards   | Yellow cards given to Opposing Team. |
+| 23   |  RedCards         | Red cards               | Red cards given to Team 1.           |
+| 24   |  OppRedCards      | Opponent red cards      | Red cards given to Opposing Team.    |
 "
 cat(tabl)
 ```
-
-
+  
+  
 9.	Provide data descriptive statistics, rows, str  
-The complete dataset has 23 variables and 852 observations. The dataset does not have any NA's, meaning that there will be no additional data dropped.  
+The complete dataset has 24 variables and 780 observations - two per match. The dataset does not have any NA's, meaning that there will be no additional data dropped.  
 The following shows the dimensions and structure of the dataset.  
-```{r}
-dim(dat)
-str(dat)
+
+```{r tidy = TRUE}
+dim(premTransformed)
+str(premTransformed)
 ```
 
 
 10. Did you have to do any cleansing, describe  
-No cleansing was needed as the dataset was already cleaned when collected from Martin's company's SQL repository. There were no errors in the dataset and no missing values.  
-However, we did need to add to columns to represent customer age, and whether the customer accepted the loan or not.  
+No, the dataset was already cleaned when we downloaded it.  
+However, we did need to transform it as the data wasn't in the format we desired. We transformed it so that we our analysis and data modeling would be better adjusted and easier for the later stages of the project.  
 
 11. Interesting findings  
 
@@ -170,75 +196,37 @@ However, we did need to add to columns to represent customer age, and whether th
 
 
 ### APPENDIX - RStudio Code
-```{r eval=FALSE}
+```{r eval=FALSE, tidy = TRUE}
 #Load the required packages
-packages <- c('pacman', 'readxl', 'dplyr', 'ggplot2', 'tidyr')
-install.packages(packages)
-require(pacman)
-p_load(readxl, dplyr, ggplot2, tidyr)
+require(dplyp)
+require(ggplot2)
 
 #Load the dataset into R 
-dat <- read_excel('IST687 Data.xlsx')
+url <- "http://www.football-data.co.uk/mmz4281/1718/E0.csv"
+prem <- prem <- read.csv(url, stringsAsFactors = FALSE)
+
+#Data transformation
+#Select Home Team and Home team data. 
+premHomeTeams <- prem %>% 
+  mutate(HomeAway = 'Home') %>% 
+  select(Div, Date, Team1 = HomeTeam, Team2 = AwayTeam, HomeAway, GS = FTHG, GA = FTAG, FTR, HTGS = HTHG, HTGA = HTAG, HTR, Referee, ShotsTaken = HS, ShotsAllowed = AS, ShotsOnTarget = HST, OppShotsOnTarget = AST, FoulsCommitted = HF, FoulsReceived = AF, CornerKicks = HC, OppCornerKicks = AC, YellowCards = HY, OppYellowCards = AY, RedCards = HR, OppRedCards = AR)
+
+#Select Away Team and Away team data.
+premAwayTeams <- prem %>% 
+  mutate(HomeAway = 'Away') %>% 
+  select(Div, Date, Team1 = AwayTeam, Team2 = HomeTeam, HomeAway, GS = FTAG, GA = FTHG, FTR, HTGS = HTAG, HTGA = HTHG, HTR, Referee, ShotsTaken = AS, ShotsAllowed = HS, ShotsOnTarget = AST, OppShotsOnTarget = HST, FoulsCommitted = AF, FoulsReceived = HF, CornerKicks = AC, OppCornerKicks = HC, YellowCards = AY, OppYellowCards = HY, RedCards = AR, OppRedCards = HR)
+
+#Bind datasets into a new dataset. 
+premTransformed <- premHomeTeams %>% bind_rows(premAwayTeams)
 
 #Check the structure of the data, head, and see that there are no NAs.
-str(dat)
-head(dat)
-summary(dat)
+str(premTransformed)
+head(premTransformed)
+summary(premTransformed)
 
 #Column names need to be changed to better understand the data. 
-colnames(dat)
-names <- c("person_id", "credit_score", "loan_application_date", "requested_loan_term", "requested_loan_amount", "preapproved_loan_amount", "preapproved_loan_term",  "person_birthdate", "person_marital_status", "person_gender", "person_degree_type_desc", "person_employment_type_desc", "industry", "estimated_net_income", "actual_net_income", "monthly_debt_capacity", "decision_status", "loan_disbursement_date", "first_repayment_date", "loan_amount", "approved_loan_rate", "approved_nominal_rate", "approved_interest_amount")
-colnames(dat) <- names
+colnames(premTransformed)
 
-#Create month variable to better bin the data for month-to-month analysis.
-#We'll also calculate the age and bin them in groups of ten years.
-dat <- dat %>% mutate(age = as.numeric((Sys.Date() - as.Date(person_birthdate))/365),
-                 		  age_bins = as.character(cut(age, breaks = c(21, 31, 41, 51, 61, 71, 81, 91),
-                                 	labels = c('21-30', '31-40', '41-50', '51-60', '61-70', '71-80', '81-90'))),
-                  	loan_application_code_month = ifelse(month(dat$loan_application_date) < 10, paste0(year(dat$loan_application_date), 0, month(dat$loan_application_date)), paste0(year(dat$loan_application_date), month(dat$loan_application_date))), loan_disbursement_code_month = ifelse(month(dat$loan_disbursement_date) < 10, paste0(year(dat$loan_disbursement_date), 0, month(dat$loan_disbursement_date)), paste0(year(dat$loan_disbursement_date), month(dat$loan_disbursement_date))))
-
-#Demographic distributions
-#Applications per month by gender
-ggplot(dat, aes(loan_application_code_month, fill = as.factor(person_gender))) +
-  geom_bar(position = 'stack') +
-  labs(x = 'YearMonth', y = 'Number of Applications', fill = 'Gender') +
-  ggtitle('Applications per Month', subtitle = 'Aug 2017 - Jan 2018') +
-  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
-
-#Application per month by gender - percentage
-ggplot(dat, aes(loan_application_code_month, fill = as.factor(person_gender))) +
-  geom_bar(position = 'fill') +
-  labs(x = 'YearMonth', y = 'Percentage of Applications', fill = 'Gender') +
-  ggtitle('Applications per Month', subtitle = 'Aug 2017 - Jan 2018') +
-  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
-
-#Applicant age distributions by gender
-ggplot(dat, aes(age, fill = as.factor(person_gender))) +
-  geom_density(alpha = 0.3) +
-  facet_wrap(~ person_gender, ncol = 1) +
-  labs(x = 'Customer Age', y = 'Density', fill = 'Gender') +
-  ggtitle('Age Distribution by Gender') +
-  theme(legend.position = 'bottom', plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
-# Count by degree
-ggplot(dat, aes(reorder(person_degree_type_desc, table(person_degree_type_desc)[person_degree_type_desc]))) +
-  geom_bar() +
-  coord_flip() +
-  labs(y = 'Customer Count', x = 'Degree')
-
-# Count by Line of work
-ggplot(dat, aes(reorder(industry, table(industry)[industry]))) +
-  geom_bar() +
-  coord_flip() +
-  labs(x = 'Industry', y = 'Count')
-
-# Count by marital status
-ggplot(dataset, aes(reorder(person_marital_status, table(person_marital_status)[person_marital_status]))) +
-  geom_bar() +
-  coord_flip() +
-  labs(x= 'Marital Status', y = 'Count')
-
-# Credit score distribution
-ggplot(dat, aes(credit_score)) + geom_histogram()
 
 
 ```
