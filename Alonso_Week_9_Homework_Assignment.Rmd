@@ -1,0 +1,83 @@
+---
+title: "Alonso_Week9_Homework_Assignment"
+author: "Martin Alonso"
+date: "9/13/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+IST687 Introduction to Data Science: Week 8 Homework
+
+Making Predictions.
+
+#Part 1: The Code
+```{r eval = FALSE, tidy = TRUE}
+require(dplyr)
+require(ggplot2)
+require(kernlab)
+require(hydroGOF)
+require(gridExtra)
+require(e1071)
+
+#Step 1: Load the data.
+# Load the data and replace NAs with median values. 
+air <- airquality
+air$Ozone[is.na(air$Ozone)] <- median(air$Ozone, na.rm = T)
+air$Solar.R[is.na(air$Solar.R)] <- mean(air$Solar.R, na.rm = T)
+
+#Step 2: Create training and testing sets. 
+split <- sample(nrow(air), nrow(air) * .67)
+airTrain <- air[split, ]
+airTest <- air[-split, ]
+
+#Step 3: Build a Model using KSVM & visualize the results
+#1. Build a model to predict Ozone. You can use all the attributes or select a few. 
+ksvmModel <- ksvm(Ozone ~ ., data = airTrain)
+
+#2. Test the model on the testing set; compute RMSE. 
+pred <- data.frame(predict(ksvmModel, airTest))
+rmse(pred, airTest$Ozone)
+
+#3. Plot the results.
+airTestPred <- cbind(airTest, pred)
+colnames(airTestPred)[7] <- 'Pred'
+airTestPred$error <- airTestPred$Ozone - airTestPred$Pred
+
+ksvmPlot <- ggplot(airTestPred, aes(Temp, Wind, size = error, colour = error)) + geom_point()
+ksvmPlot
+
+#4. Compute models for 'svm' and 'lm'. 
+#Compute the SVM model. 
+svmModel <- svm(Ozone ~ ., data = airTrain)
+predSVM <- data.frame(predict(svmModel, airTest))
+airTestSVM <- cbind(airTest, predSVM)
+colnames(airTestSVM)[7] <- 'Pred'
+airTestSVM$error <- airTestSVM$Ozone - airTestSVM$Pred
+
+#Compute the LM model
+lmModel <- lm(Ozone ~ ., data = airTrain)
+predLM <- data.frame(predict(lmModel, airTest))
+airTestLM <- cbind(airTest, predLM)
+colnames(airTestLM)[7] <- 'Pred'
+airTestLM$error <- airTestLM$Ozone - airTestLM$Pred
+
+#Create the plots. 
+svmPlot <- ggplot(airTestSVM, aes(Temp, Wind, size = error, colour = error)) + geom_point()
+lmPlot <- ggplot(airTestLM, aes(Temp, Wind, size = error, colour = error)) + geom_point()
+
+#5. Grapth the plots using the gridExtra package.
+#The graphs will be placed in 3 separate rows and 1 column. 
+grid.arrange(ksvmPlot, svmPlot, lmPlot, nrow = 3)
+
+#Step 4: Create a 'goodOzone' variable. 
+
+
+```
+
+#Part 2: Running the Code
+```{r tidy = TRUE}
+
+```
