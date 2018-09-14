@@ -73,7 +73,58 @@ lmPlot <- ggplot(airTestLM, aes(Temp, Wind, size = error, colour = error)) + geo
 grid.arrange(ksvmPlot, svmPlot, lmPlot, nrow = 3)
 
 #Step 4: Create a 'goodOzone' variable. 
+#Colculate a new column called goodOzone with values 1 if Ozone reading is above average and 0 if below average. 
+airPlus <- air %>% 
+  mutate(goodOzone = ifelse(Ozone > mean(Ozone), 1, 0))
 
+split <- sample(nrow(airPlus), nrow(airPlus) * .67)
+airPlusTrain <- airPlus[split, ]
+airPlusTest <- airPlus[-split, ]
+
+#Step 5: See if we can do a better job predicting 'good' and 'bad' days. 
+#1. Build a model using the ksvm algorithm.
+ksvmModelOzone <- ksvm(goodOzone ~ Solar.R + Wind + Temp, data = airPlusTrain)
+
+#2. Test the model
+predKsvm <- data.frame(predict(ksvmModelOzone, airPlusTest))
+airPlusTestPred <- cbind(airPlusTest, predKsvm)
+colnames(airPlusTestPred)[8] <- 'Pred'
+airPlusTestPred <- airPlusTestPred %>% mutate(Pred = as.factor(round(Pred)), correct = ifelse(goodOzone == Pred, 1, 0)) 
+airPlusTestPred %>% select(goodOzone, Pred) %>% head()
+
+#3. Plot the model. 
+ksvmOzonePlot <- ggplot(airPlusTestPred, aes(Temp, Wind, shape = Pred, color = as.factor(goodOzone), size = as.factor(correct))) + 
+  geom_point()
+ksvmOzonePlot
+
+#4. Compute the models for svm and Naive Bayes. 
+#Compute the SVM model. 
+svmOzoneModel <- svm(goodOzone ~ Solar.R + Temp + Wind, data = airPlusTrain)
+predOzoneSVM <- data.frame(predict(svmOzoneModel, airPlusTest))
+airTestPlusSVM <- cbind(airPlusTest, predOzoneSVM)
+colnames(airTestPlusSVM)[8] <- 'Pred'
+airPlusTestSVM <- airTestPlusSVM %>% mutate(Pred = as.factor(round(Pred)), correct = ifelse(goodOzone == Pred, 1, 0)) 
+airPlusTestSVM %>% select(goodOzone, Pred) %>% head()
+
+#Compute the NB model -- Need to revise this section. Not working. 
+nbOzoneModel <- naiveBayes(goodOzone ~ Solar.R + Temp + Wind, data = airPlusTrain)
+predOzoneNB <- predict(nbOzoneModel, airPlusTest[, 2:4])
+airPlusTestNB <- cbind(airPlusTest, predOzoneNB)
+colnames(airPlusTestNB)[8] <- 'Pred'
+airPlusTestNB <- airPlusTestNB %>% mutate(Pred = as.factor(round(Pred)), correct = ifelse(goodOzone == Pred, 1, 0)) 
+airPlusTestNB %>% select(goodOzone, Pred) %>% head()
+
+#Create the plots. 
+svmOzonePlot <- ggplot(airPlusTestSVM, aes(Temp, Wind, size = error, colour = error)) + geom_point()
+nbOzonePlot <- ggplot(airPlusTestNB, aes(Temp, Wind, size = error, colour = error)) + geom_point()
+
+#5. Grapth the plots using the gridExtra package.
+#The graphs will be placed in 3 separate rows and 1 column. 
+grid.arrange(ksvmOzonePlot, svmOzonePlot, nbOzonePlot, nrow = 3)
+
+
+
+#Step 6: Which are the best Models for this data. 
 
 ```
 
