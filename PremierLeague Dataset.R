@@ -1,6 +1,10 @@
 require(dplyr)
 
-prem <- read.csv("http://www.football-data.co.uk/mmz4281/1718/E0.csv")
+prem1516 <- read.csv("http://www.football-data.co.uk/mmz4281/1516/E0.csv")
+prem1617 <- read.csv("http://www.football-data.co.uk/mmz4281/1617/E0.csv")
+prem1718 <- read.csv("http://www.football-data.co.uk/mmz4281/1718/E0.csv")
+
+prem <- prem1516 %>% bind_rows(prem1617) %>% bind_rows(prem1718)
 
 premHomeTeams <- prem %>% 
   mutate(HomeAway = 'Home') %>% 
@@ -16,4 +20,4 @@ premAwayTeams <- prem %>%
          CornerKicksAllowed = HC, YellowCards = AY, YellowCardsOpp = HY, RedCards = AR, RedCardsOpp = HR)
 
 premUpdated <- premHomeTeams %>% bind_rows(premAwayTeams)
-write.csv(premUpdated, 'PremierLeague 2017-18.csv')
+write.csv(premUpdated, 'PremierLeague 2015-18.csv')

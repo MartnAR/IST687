@@ -202,8 +202,11 @@ require(dplyp)
 require(ggplot2)
 
 #Load the dataset into R 
-url <- "http://www.football-data.co.uk/mmz4281/1718/E0.csv"
-prem <- prem <- read.csv(url, stringsAsFactors = FALSE)
+prem1516 <- read.csv("http://www.football-data.co.uk/mmz4281/1516/E0.csv")
+prem1617 <- read.csv("http://www.football-data.co.uk/mmz4281/1617/E0.csv")
+prem1718 <- read.csv("http://www.football-data.co.uk/mmz4281/1718/E0.csv")
+
+prem <- prem1516 %>% bind_rows(prem1617) %>% bind_rows(prem1718)
 
 #Data transformation
 #Select Home Team and Home team data. 
