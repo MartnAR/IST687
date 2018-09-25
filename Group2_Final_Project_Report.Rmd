@@ -8,11 +8,27 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+require(arules)
+require(bindr)
+require(caret)
+require(caTools)
 require(dplyr)
-require(ggplot2)
+require(e1071)
+require(eeptools) 
 require(formatR)
+require(ggplot2)
+require(gridExtra)
+require(kernlab)
+require(lubridate)
 require(magrittr)
+require(neuralnet)
+require(randomForest)
+require(readxl)
+require(reshape2)
+require(rpart) 
+require(sqldf)
 require(tidyr)
+require(tidyverse)
 ```
 
 ## Table of Contents
@@ -37,12 +53,14 @@ require(tidyr)
 ### DESCRIPTIVE STATISTICS
 12. Provide demographic statistics – Location
 13. Any early observations, nuggets of interest, interpretation, interesting findings
-14. Graphs, charts, tables, visuals, text
 
 ### USE OF MODELING TECHNIQUES
-15. Linear modeling
-16. Support vector
-17. Provide key statistics of interest and interpretation for each model
+14. Modeling approach
+15. Classification models
+16. Plotting and further interpreting results
+
+### CONCLUSIONS
+17. Final thoughts
 
 ### OVERALL INTERPRETATION OF RESULTS/ACTIONABLE INSIGHTS
 ### REFERENCES
@@ -63,17 +81,22 @@ Obviously, we expect that teams that score more goals tend to win more but, by l
   
 ### BUSINESS QUESTIONS  
 3. What are the Business Questions?  
-   
-  
+There are three main questions we want to address with this project: 
+1. Is there home-field advantage in the English Premier League?
+2. Does the score at half-time affect the final outcome of the game?
+3. Are the number of fouls, cards, and shots correlated to the final score of the game? 
   
 ### DATA ACQUISITION, CLEANSING, TRANSFORMATION, AND MUNGING
 4.	Describe your data acquisition process.  
 The data was acquired from `www.football-data.co.uk`, a website that provides free data on soccer coverage from around the world. For this project, we downloaded the csv file for the English Premier League 2017-2018 season. 
 We grabbed the csv url and loaded it into RStudio using the following command:  
 
-```{r tidy=TRUE}
-url <- "http://www.football-data.co.uk/mmz4281/1718/E0.csv"
-prem <- prem <- read.csv(url, stringsAsFactors = FALSE)
+```{r tidy=TRUE, echo = FALSE}
+prem1516 <- read.csv("http://www.football-data.co.uk/mmz4281/1516/E0.csv")
+prem1617 <- read.csv("http://www.football-data.co.uk/mmz4281/1617/E0.csv")
+prem1718 <- read.csv("http://www.football-data.co.uk/mmz4281/1718/E0.csv")
+
+prem <- prem1516 %>% bind_rows(prem1617) %>% bind_rows(prem1718)
 head(prem)
 ```
   
@@ -88,17 +111,16 @@ After that, we made sure that the data types were correct, i.e. strings weren't 
 We also made sure that there were no `NULL` values or `NA's`, which fortunately there weren't.  
 Finally, after the assessment was made, we decided to transform the dataset in order to have one row per team per date, renaming the columns, dropping the betting line columns, and adding a flag to signal whether the team in question was the home or away team.  
 
-```{r tidy = TRUE}
-
+```{r tidy = TRUE, echo = FALSE}
 #Select Home Team and Home team data. 
 premHomeTeams <- prem %>% 
   dplyr::mutate(HomeAway = 'Home') %>% 
-  dplyr::select(Div, Date, Team1 = HomeTeam, Team2 = AwayTeam, HomeAway, GS = FTHG, GA = FTAG, FTR, HTGS = HTHG, HTGA = HTAG, HTR, Referee, ShotsTaken = HS, ShotsAllowed = AS, ShotsOnTarget = HST, OppShotsOnTarget = AST, FoulsCommitted = HF, FoulsReceived = AF, CornerKicks = HC, OppCornerKicks = AC, YellowCards = HY, OppYellowCards = AY, RedCards = HR, OppRedCards = AR)
+  dplyr::select(Div, Date, Team1 = HomeTeam, Team2 = AwayTeam, HomeAway, GS = FTHG, GA = FTAG, FTR, HTGS = HTHG, HTGA = HTAG, HTR, Referee, ShotsTaken = HS, ShotsAllowed = AS, ShotsOnTarget = HST, OppShotsOnTarget = AST, FoulsCommitted = HF, FoulsReceived = AF, CornerKicks = HC, OppCornerKicks = AC, YellowCards = HY, OppYellowCards = AY, RedCards = HR, OppRedCards = AR, WinOdds = B365H, DrawOdds = B365D, LossOdds = B365A)
 
 #Select Away Team and Away team data.
 premAwayTeams <- prem %>% 
   dplyr::mutate(HomeAway = 'Away') %>% 
-  dplyr::select(Div, Date, Team1 = AwayTeam, Team2 = HomeTeam, HomeAway, GS = FTAG, GA = FTHG, FTR, HTGS = HTAG, HTGA = HTHG, HTR, Referee, ShotsTaken = AS, ShotsAllowed = HS, ShotsOnTarget = AST, OppShotsOnTarget = HST, FoulsCommitted = AF, FoulsReceived = HF, CornerKicks = AC, OppCornerKicks = HC, YellowCards = AY, OppYellowCards = HY, RedCards = AR, OppRedCards = HR)
+  dplyr::select(Div, Date, Team1 = AwayTeam, Team2 = HomeTeam, HomeAway, GS = FTAG, GA = FTHG, FTR, HTGS = HTAG, HTGA = HTHG, HTR, Referee, ShotsTaken = AS, ShotsAllowed = HS, ShotsOnTarget = AST, OppShotsOnTarget = HST, FoulsCommitted = AF, FoulsReceived = HF, CornerKicks = AC, OppCornerKicks = HC, YellowCards = AY, OppYellowCards = HY, RedCards = AR, OppRedCards = HR, WinOdds = B365A, DrawOdds = B365D, LossOdds = B365A)
 
 #Bind datasets into a new dataset. 
 premTransformed <- premHomeTeams %>% bind_rows(premAwayTeams)
@@ -117,7 +139,6 @@ We transformed this data so as to end with 24 columns and 780 rows, setting on t
 ```{r tidy=TRUE}
 colnames(premTransformed)
 ```
-
 
 8.	Provide a data dictionary  
 ```{r table2, echo=FALSE, message=FALSE, warning=FALSE, results='asis', tidy=TRUE}
@@ -157,7 +178,7 @@ cat(tabl)
 The complete dataset has 24 variables and 780 observations - two per match. The dataset does not have any NA's, meaning that there will be no additional data dropped.  
 The following shows the dimensions and structure of the dataset.  
 
-```{r tidy = TRUE}
+```{r tidy = TRUE, echo = FALSE}
 dim(premTransformed)
 str(premTransformed)
 ```
@@ -168,9 +189,9 @@ No, the dataset was already cleaned when we downloaded it.
 However, we did need to transform it as the data wasn't in the format we desired. We transformed it so that we our analysis and data modeling would be better adjusted and easier for the later stages of the project.  
 
 11. Interesting findings  
-
-
-
+What was initially interesting is that there seems to be no home-field advantage. Teams are likely to win at home or away, which speaks to the competitiveness of the league. 
+We also found that, although red cards are significant when determining the outcome of the game, yellow cards aren't; which is interesting as the number of yellow cards could lead to substitutions or teams playing more calmly. 
+A third interesting finding was that there is a forced variation each season because of teams being relegated and promoted from the Second Division - something that we saw in the data but weren't able to study because it was outside the scope of the project. 
 
 ### DESCRIPTIVE STATISTICS
 12. Provide demographic statistics – Location  
@@ -178,169 +199,43 @@ The English Premier League constitutes the highest level of professional footbal
 In the descriptive analysis of the Premier League dataset the focus was on the followings:  
 •	Measures of Central Tendency and Dispersion: the mean, standard deviation, median, minimum and maximum values, as well as quantiles were calculated. Below table summarizes this information for one of the key variables i.e. Full Time Win.
 
-```{r tidy = TRUE}
+```{r tidy = TRUE, echo = FALSE}
 #Measures of central tendency 
-```
-
-Moreover, the normal distribution was plotted for the following variables Full Time Win,  Full Time Loss, and Full Time Draw.   
-
-```{r tidy = TRUE}
-
-```
-
-The Full Time Win and Full Time Draw variables are normally distributed as they are symmetrical to some extent and the mean and  median are very close. The Full Time Win and Full Time Draw are both slightly left-skewed as the median is larger than the mean.
-```{r tidy = TRUE}
-
-```
-
-•	Team’s discipline: was measured by number of fouls committed, and number of yellow cards and red cards received. The figure below shows the number of yellow and red cards received by Home and Away teams. The Home teams were more disciplined.
-
-```{r tidy = TRUE}
-
-```
-
-•	Scoring Goals and Performance: the average of shots taken, and goals scored for and against Home and Away teams was calculated. The figure below demonstrates a comparison between Home and Away teams. The Home teams performed better as they had higher number of shots and corner kicks, and  higher goals during half as well as full time.
-
-```{r tidy = TRUE}
-
-```
-
-•	Home Advantage: was measured by calculating the points earned from all matches played at home versus away. The team gets 3 points for a win, 1 point for a draw, and zero for a loss. If the ratio is 50%, it indicates that success has been achieved equally at home and away i.e. there is no home field advantage. If the ratio is above 50% then it indicates that playing at home field increases the winning probability. 
-
-```{r tidy = TRUE}
-
-```
-
-13. Any early observations, nuggets of interest, interpretation, interesting findings  
-Overall, the findings were not surprising as they were consistent with our assumptions with the only exception of home advantage. Only 10 teams had a home advantage greater than 50%.
-
-
-
-### USE OF MODELING TECHNIQUES
-15. Modeling approach
-After loading the data 3 variables were added to the dataset;
-•	Dependent Variable WIN:
-```{r tidy = TRUE}
-premTransformed$win <- as.factor(ifelse(premTransformed$GS > premTransformed$GA, 1, 0))
-#Note: a tie is categorized as a 0 in this formula and prediction
-```
-
-•	Halftime Goal Difference:
-```{r tidy = TRUE}
-premTransformed$HTdiff <- premTransformed$HTGS - premTransformed$HTGA
-```
-
-•	Combine Yellow and Red cards into a single variable:
-```{r tidy = TRUE}
-premTransformed$red_yellow <- premTransformed$RedCards + premTransformed$YellowCards
-premTransformed$opp_red_yellow <- premTransformed$OppRedCards + premTransformed$OppYellowCards
-```
-
-We used a logistic regression model, where we first built the model using all the variables. 
-```{r echo = TRUE, tidy = TRUE}
-logModel <- glm(formula = win ~ HomeAway + FTR + HTdiff + HTR + Referee + ShotsTaken + ShotsAllowed + ShotsOnTarget + OppShotsOnTarget + FoulsCommitted + FoulsReceived + CornerKicks + OppCornerKicks
-+                                   + YellowCards
-+                                   + OppYellowCards
-+                                   + RedCards
-+                                   + OppRedCards
-+                                   + WinOdds
-+                                   + DrawOdds
-+                                   + LossOdds
-+                                   + red_yellow
-+                                   + opp_red_yellow,
-, data = premTransformed, family = binomial(logit))
-summary(logModel)
-
-```
-
-
-
-
-### APPENDIX - RStudio Code
-```{r eval=FALSE, tidy = TRUE}
-#Load the required packages
-require(dplyr)
-require(ggplot2)
-require(reshape2)
-require(readxl)
-require(ggplot2)
-require(moments)
-require(sqldf)
-require(magrittr)
-require(eeptools)
-
-#Load the dataset into R 
-prem1516 <- read.csv("http://www.football-data.co.uk/mmz4281/1516/E0.csv")
-prem1617 <- read.csv("http://www.football-data.co.uk/mmz4281/1617/E0.csv")
-prem1718 <- read.csv("http://www.football-data.co.uk/mmz4281/1718/E0.csv")
-
-prem <- prem1516 %>% bind_rows(prem1617) %>% bind_rows(prem1718)
-
-#Data transformation
-#Select Home Team and Home team data. 
-premHomeTeams <- prem %>% 
-  mutate(HomeAway = 'Home') %>% 
-  select(Div, Date, Team1 = HomeTeam, Team2 = AwayTeam, HomeAway, GS = FTHG, GA = FTAG, FTR, HTGS = HTHG, HTGA = HTAG, HTR, Referee, ShotsTaken = HS, ShotsAllowed = AS, ShotsOnTarget = HST, OppShotsOnTarget = AST, FoulsCommitted = HF, FoulsReceived = AF, CornerKicks = HC, OppCornerKicks = AC, YellowCards = HY, OppYellowCards = AY, RedCards = HR, OppRedCards = AR)
-
-#Select Away Team and Away team data.
-premAwayTeams <- prem %>% 
-  mutate(HomeAway = 'Away') %>% 
-  select(Div, Date, Team1 = AwayTeam, Team2 = HomeTeam, HomeAway, GS = FTAG, GA = FTHG, FTR, HTGS = HTAG, HTGA = HTHG, HTR, Referee, ShotsTaken = AS, ShotsAllowed = HS, ShotsOnTarget = AST, OppShotsOnTarget = HST, FoulsCommitted = AF, FoulsReceived = HF, CornerKicks = AC, OppCornerKicks = HC, YellowCards = AY, OppYellowCards = HY, RedCards = AR, OppRedCards = HR)
-
-#Bind datasets into a new dataset. 
-premTransformed <- premHomeTeams %>% bind_rows(premAwayTeams)
-
-#Removing spaces from the character columns. 
-premTransformed$Team1 <- gsub(" ", "", premTransformed$Team1)
-premTransformed$Team2 <- gsub(" ", "", premTransformed$Team2)
-premTransformed$HomeAway <- gsub(" ", "", premTransformed$HomeAway)
-
-#Check the structure of the data, head, and see that there are no NAs.
-str(premTransformed)
-head(premTransformed)
-summary(premTransformed)
-
-#Column names need to be changed to better understand the data. 
-colnames(premTransformed)
-
-#Descriptive statistics. 
-
-#The function performanceGoalsHomeAway computes totals and average of goals scored for and against Home and Away teams
-#GF: Goal For, GA: Goal Against,	AVG
 performanceGoalsHomeAway <- function(x) {
   df <- x
-  MeanShotsTaken <- mean(df$ShotsTaken)
-  MeanShotsOnTarget <- mean(df$ShotsOnTarget)
-  MeanCornerKicks <- mean(df$CornerKicks)
-  MeanFTGoals <- mean(df$GS)
-  MeanHTGoals <- mean(df$HTGS)
+  MeanShotsTaken <-mean(df$ShotsTaken)
+  MeanShotsOnTarget <-mean(df$ShotsOnTarget)
+  MeanCornerKicks <-mean(df$CornerKicks)
+  MeanFTGoals <-mean(df$GS)
+  MeanHTGoals <-mean(df$HTGS)
   
-  mStats <- data.frame(MeanShotsTaken , MeanShotsOnTarget, MeanCornerKicks, MeanFTGoals, MeanHTGoals)
+  mStats <- c(MeanShotsTaken , MeanShotsOnTarget, MeanCornerKicks, MeanFTGoals, MeanHTGoals)
   return(mStats)
 }
 
 #The function performanceCardsHomeAway computes average of cards received and fouls committed and against Home and Away teams
+#GF: Goal For, GA: Goal Against,	AVG
 performanceCardsHomeAway <- function(x) {
   df <- x
   TotalGamesPlayed <- nrow(df)
-  TotalFoulsCommitted <- sum(df$HF)
-  TotalFoulsReceived <- sum(df$AF)
-  TotalYellowCards <- sum(df$HY)
-  TotalRedCards <- sum(df$HR)
-  TotalOppYellowCards <- sum(df$AY)
-  TotalOppRedCards <- sum(df$AR)
-  MeanFoulsCommitted <- round(mean(df$HF), digits = 1)
-  MeanFoulsReceived <- round(mean(df$AF), digits = 1)
-  MeanYellowCards <- round(mean(df$HY), digits = 1)
-  MeanRedCards <- round(mean(df$HR), digits = 1) 
-  MeanOppYellowCards <- round(mean(df$AY), digits = 1) 
-  MeanOppRedCards <- round(mean(df$AR), digits = 1)
+  TotalFoulsCommitted <-sum(df$HF)
+  TotalFoulsReceived <-sum(df$AF)
+  TotalYellowCards <-sum(df$HY)
+  TotalRedCards <-sum(df$HR)
+  TotalOppYellowCards <-sum(df$AY)
+  TotalOppRedCards <-sum(df$AR)
+  MeanFoulsCommitted <-round(mean(df$HF), digits = 1)
+  MeanFoulsReceived <-round(mean(df$AF), digits = 1)
+  MeanYellowCards <-round(mean(df$HY), digits = 1)
+  MeanRedCards <-round(mean(df$HR), digits = 1) 
+  MeanOppYellowCards <-round(mean(df$AY), digits = 1) 
+  MeanOppRedCards <-round(mean(df$AR), digits = 1)
   
-  mStats <- data.frame(TotalGamesPlayed, TotalFoulsCommitted, TotalFoulsReceived, TotalYellowCards,    TotalRedCards, TotalOppYellowCards, TotalOppRedCards, MeanFoulsCommitted, MeanFoulsReceived, MeanYellowCards, MeanOppYellowCards, MeanRedCards, MeanOppRedCards)
+  mStats <- data.frame(TotalGamesPlayed, TotalFoulsCommitted, TotalFoulsReceived, TotalYellowCards, TotalRedCards, TotalOppYellowCards, TotalOppRedCards, MeanFoulsCommitted, MeanFoulsReceived, MeanYellowCards, MeanOppYellowCards, MeanRedCards, MeanOppRedCards)
   return(mStats)
 }
 
-#The function descriptiveStatsInfo takes a dataframe as input, and calculates the mean, median, min and max, standard deviation, quantiles (at 0.05 and 0.95), and skewness. 
+#The function descriptiveStatsInfo’ takes a dataframe as input, and calculates the followings: mean, median, min and max, standard deviation, quantiles, and skewness. 
 descriptiveStatsInfo <- function(x) {
   #Computing statistical measurements for teams
   df <- x
@@ -359,7 +254,6 @@ descriptiveStatsInfo <- function(x) {
   MaxFTLoss <- max(df$TotalFTLoss)
   MinFTDraw <- min(df$TotalFTDraw)
   MaxFTDraw <- max(df$TotalFTDraw)
-  
   QuantilesFTWinInfo <- quantile(df$TotalFTWin, probs = c(0.05, 0.95))
   SkewnessFTWinInfo <- skewness(df$TotalFTWin)
   QuantilesFTLossInfo <- quantile(df$TotalFTLoss, probs = c(0.05, 0.95))
@@ -388,15 +282,13 @@ summaryStatsHomeAway <- function(x, mTeam1, mHomeAway) {
   TotalHTGoals <- sum(df$HTGS)
   df$FTR <- gsub(" ", "", df$FTR)
   df$HTR <- gsub(" ", "", df$HTR)
-  TotalHTWin <- length(which(df$HTR=="H" ))
-  TotalHTLoss <- length(which(df$HTR=="A" ))
-  TotalHTDraw <- length(which(df$HTR=="D" ))
-  TotalFTWin <- length(which(df$FTR=="H" ))
-  TotalFTLoss <- length(which(df$FTR=="A" ))
-  TotalFTDraw <- length(which(df$FTR=="D" ))
-  
-  mStats <- data.frame(Team1, HomeAway, TotalShotsTaken , TotalShotsOnTarget, TotalFoulsCommitted, TotalCornerKicks, TotalYellowCards, TotalRedCards, TotalFTGoals,TotalHTGoals,TotalHTWin, TotalHTLoss, TotalHTDraw, TotalFTWin, TotalFTLoss, TotalFTDraw, TotalGamesPlayed)
-  
+  TotalHTWin <- length(which(df$HTR == "H"))
+  TotalHTLoss <- length(which(df$HTR == "A"))
+  TotalHTDraw <- length(which(df$HTR == "D"))
+  TotalFTWin <- length(which(df$FTR == "H"))
+  TotalFTLoss <- length(which(df$FTR == "A"))
+  TotalFTDraw <- length(which(df$FTR == "D"))
+  mStats <- data.frame(Team1, HomeAway, TotalShotsTaken , TotalShotsOnTarget, TotalFoulsCommitted, TotalCornerKicks, TotalYellowCards, TotalRedCards, TotalFTGoals, TotalHTGoals, TotalHTWin, TotalHTLoss, TotalHTDraw, TotalFTWin, TotalFTLoss, TotalFTDraw, TotalGamesPlayed)
   return(mStats)
 }
 
@@ -407,54 +299,45 @@ performanceHomeAdvantage <- function(x) {
   # Calculate the ratio of total points earned from all matches/games played at home vs. away.
   # If the ratio is 50%, it indicates that success has been achieved equally at home and away i.e.there is no home field advantage.
   # If the ratio is above 50% then it indicates that playing at home field increases the winning probability.
-  
   df <- x
   mMax <- nrow(df)
   mCounter <- 1
   HomeAdvantagedf <- data.frame()
-  while (mCounter <= (mMax-1)) {
+  while (mCounter <= (mMax - 1)) {
     TotalHomePoints <- 0
     TotalAwayPoints <- 0
     if(df$HomeAway[mCounter] == "Home") {
       TotalHomePoints <- df$TotalFTWin[mCounter] * 3 + df$TotalFTDraw[mCounter] * 1 
-      TotalAwayPoints <- df$TotalFTWin[mCounter+1] * 3 + df$TotalFTDraw[mCounter] * 1
+      TotalAwayPoints <- df$TotalFTWin[mCounter + 1] * 3 + df$TotalFTDraw[mCounter] * 1
     }
-    HomeAdvantage = round(TotalHomePoints / (df$TotalGamesPlayed[mCounter] * 3) * 100, digits = 1)
-    AwayAdvantage = round(TotalAwayPoints / (df$TotalGamesPlayed[mCounter] * 3) * 100, digits = 1)
+    HomeAdvantage = round(TotalHomePoints/(df$TotalGamesPlayed[mCounter] * 3) * 100, digits = 1)
+    AwayAdvantage = round(TotalAwayPoints/(df$TotalGamesPlayed[mCounter] * 3) * 100, digits = 1)
     
-    mStats       <- data.frame(df$Team1[mCounter], HomeAdvantage, AwayAdvantage, df$TotalGamesPlayed[mCounter])
-    HomeAdvantagedf  <-  HomeAdvantagedf %>% rbind(mStats)
+    mStats <- data.frame(df$Team1[mCounter], HomeAdvantage, AwayAdvantage, df$TotalGamesPlayed[mCounter])
+    HomeAdvantagedf <- HomeAdvantagedf %>% rbind(mStats)
     
     mCounter <- mCounter + 2
-    print(mCounter)
   }
   return(HomeAdvantagedf)
 }
 
-
-#Step 2: Create a dataframe with all teams (Home and Away) participating in the English Premier League and their totals.
+#Step 2: Create a dataframe with all teams (Home and Away) participating in the UK premiere league and their totals.
 premTeams <- gsub(" ", "", premTransformed$Team1)
 premTeams <- unique(premTeams)
-premStat <- premStat[order(premStat$Team1),]
 premTeams
 
 premHome <- premHomeTeams %>% mutate(HomeAway = "Home") %>% select(Date, Team1, Team2, HomeAway, GS, FTR, HTGS, HTR, ShotsTaken, ShotsOnTarget, FoulsCommitted, CornerKicks, YellowCards, RedCards)
 premAway <- premAwayTeams %>% mutate(HomeAway = "Away") %>% select(Date, Team1, Team2, HomeAway, GS, FTR, HTGS, HTR, ShotsTaken, ShotsOnTarget, FoulsCommitted, CornerKicks, YellowCards, RedCards)
 
 mCounter <- 1
-mMax <-  length(premTeams)
+mMax <- length(premTeams)
 premHomeTeamStat <- data.frame()
 premAwayTeamStat <- data.frame()
-premStat  <- data.frame()
+premStat <- data.frame()
 while (mCounter <= mMax) {
   mTeam <- premTeams[mCounter]
   premHomeTeam <- premHome[ which(premHome$Team1 == mTeam),]
   premAwayTeam <- premAway[ which(premAway$Team1 == mTeam),]
-  #premHomeTeamStat <- premHomeTeam[mCounter,2:4]  # to get the Team1, Team2, and HomeAway values
-  #premAwayTeamStat <- premAwayTeam[mCounter,2:4]
-  #premHomeTeamStat  <- premTeams[mCounter] 
-  #premHomeTeamStat  <- premHomeTeamStat  
-  #premAwayTeamStat  <- premTeams[mCounter]
   premHomeStatTemp  <- summaryStatsHomeAway(premHomeTeam, mTeam,"Home" )
   premAwayStatTemp  <- summaryStatsHomeAway(premAwayTeam, mTeam,"Away") 
   premHomeTeamStat  <- cbind(premHomeStatTemp)  
@@ -464,33 +347,712 @@ while (mCounter <= mMax) {
   mCounter <- mCounter + 1
 }
 
-#Reset index row numbers
-rownames(premStat) <- NULL
+#Renumber/reindex the row numbers
+row.names(premStat) <- NULL
 #premStat <- premStat[,-2:-2]   # removing Team2
+premStat
 
 #Step 3: calculate the descriptive & performance statistics for all Home and Away teams.
 
 #1. Calculate average goals scorded for or against for Home and Away teams
 premHomeTeamGoals <- performanceGoalsHomeAway(premHome)
 premAwayTeamGoals <- performanceGoalsHomeAway(premAway)  
+premHomeTeamGoals 
+premAwayTeamGoals
 
 #2. Calculate average cards received and fouls committed for Home and Away teams
 premTeamCards  <- performanceCardsHomeAway(prem)
+premTeamCards
 
 #3. Calculate descriptive statistics for Home and Away teams
 premHomedescriptiveStats <- data.frame()
 premAwaydescriptiveStats <- data.frame()
+premdescriptiveStats <- data.frame()
 premHomedescriptiveStats <- descriptiveStatsInfo(premStat[which(premStat$HomeAway == "Home"),])
 premAwaydescriptiveStats <- descriptiveStatsInfo(premStat[which(premStat$HomeAway == "Away"),])
+premdescriptiveStats <- premHomedescriptiveStats %>% rbind(premAwaydescriptiveStats)  
+row.names(premdescriptiveStats) <- c("Home05", "Home95", "Away05", "Away95")
+premdescriptiveStats <- descriptiveStatsInfo(premStat)
+str(premdescriptiveStats)
+View(premdescriptiveStats)
+```
 
-#4. Calculate Home Advantage
+
+Moreover, the normal distribution was plotted for the following variables Full Time Win, Full Time Loss, and Full Time Draw.   
+```{r eval = FALSE, echo = FALSE}
+dfpremStat <- data_frame()
+dfpremStat <- premStat[which(premStat$HomeAway == "Home"),]
+dfpremStat$Team1 <- gsub(" ", "", dfpremStat$Team1)
+dfpremStat <-dfpremStat[order(dfpremStat$Team1),]
+row.names(dfpremStat) <- NULL
+dfpremStat <- dfpremStat[-2,] 
+dfpremStat <- dfpremStat[-9,] 
+dfpremStat <- dfpremStat[-13,] 
+dfpremStat <- dfpremStat[-14,] 
+dfpremStat <- dfpremStat[-16,] 
+row.names(dfpremStat) <- NULL
+TeamCodes <- c("ARS","BOU","BRH","BUR","CHE","CRY","EVE","HDD","LEI","LIV","MCI","MUN","NEW","SOU","STK","SWA","TOT", "WAT","WBA","WHU")
+dfpremStat <- dfpremStat %>% cbind(TeamCodes) 
+dfTotalWin <- cbind(dfpremStat$TeamCodes)  %>% cbind(dfpremStat$TotalFTWin)   
+dfpremStat <- dfpremStat[,-1:-13]
+dfpremStat <- dfpremStat[,-4]
+
+
+#Full-time wins
+ggplot(dfpremStat, aes(x = dfpremStat$TotalFTWin)) + geom_histogram(aes(y = ..density..), binwidth = 3, colour = "white", fill = "red") + geom_density(alpha = .2, fill = "blue") +   labs(title = "English Premier League - Distribution of Total Wins", x = "Total Wins") + theme_bw() + theme(axis.ticks = element_blank(), axis.text.y = element_blank())
+
+#Full-time losses
+ggplot(dfpremStat, aes(x = dfpremStat$TotalFTLoss)) + geom_histogram(aes(y = ..density..), binwidth = 3, colour = "white", fill = "red") + geom_density(alpha = .2, fill = "blue")  + labs(title = "English Premier League - Distribution of Total Losses", x = "Total Losses") + theme_bw() + theme(axis.ticks = element_blank(), axis.text.y = element_blank())
+
+#Full-time draws
+ggplot(dfpremStat, aes(x = dfpremStat$TotalFTDraw)) + geom_histogram(aes(y = ..density..), binwidth = 3, colour = "white", fill = "red") + geom_density(alpha = .2, fill = "blue")  + labs(title = "English Premier League - Distribution of Total Draws", x = "Total Draws") + theme_bw() + theme(axis.ticks = element_blank(), axis.text.y = element_blank()) 
+```
+
+
+The Full Time Win and Full Time Draw variables are normally distributed as they are symmetrical to some extent and the mean and  median are very close. The Full Time Win and Full Time Draw are both slightly left-skewed as the median is larger than the mean.
+
+•	Team’s discipline: was measured by number of fouls committed, and number of yellow cards and red cards received. The figure below shows the number of yellow and red cards received by Home and Away teams. The Home teams were more disciplined.
+
+```{r tidy = TRUE, echo = FALSE}
+premTeamCards  <- performanceCardsHomeAway(prem)
+premCards <- data.frame()
+premCards <- premCards %>% rbind(premTeamCards)
+premCards <- premCards  %>% rbind(premCards)
+colnames(premCards) <- c("TotalGamesPlayed", "TotalFoulsCommitted", "TotalFoulsReceived", "TotalYellowCards", "TotalRedCards","TotalOppYellowCards", "TotalOppRedCards", "MeanFoulsCommitted", "MeanFoulsReceived", "MeanYellowCards","MeanOppYellowCards", "MeanRedCards", "MeanOppRedCards")
+row.names(premCards) <- c("Cards Received" ,"Cards Opponent")
+mTotalGamesPlayed <- premTeamCards[1]
+premCards <- premCards[,4:7]
+premCards[2,1] <- premCards[1,3]
+premCards[2,2] <- premCards[1,4]
+premCards <- premCards[,1:2]
+premCardsTemp <- premCards$TotalYellowCards 
+premCardsTemp <- premCardsTemp %>% cbind(premCards$TotalRedCards)  
+
+mylabels <- c("Yellow Cards","Yellow Cards","Red Cards","Red Cards")
+barplot(premCardsTemp,  main=paste("Total Cards Received in" ,mTotalGamesPlayed, "Games"), ylab = "Number of Cards", xlab = "Card Type",names.arg=mylabels, ylim=c(0,2000), col = c("red","blue"), beside = TRUE)
+legend("right", c("Home" ,"Away"), fill = c("red","blue"), cex = 0.75)
+```
+
+
+•	Scoring Goals and Performance: the average of shots taken, and goals scored for and against Home and Away teams was calculated. The figure below demonstrates a comparison between Home and Away teams. The Home teams performed better as they had higher number of shots and corner kicks, and  higher goals during half as well as full time.
+
+```{r tidy = TRUE, echo = FALSE}
+premHomeTeamGoals <- performanceGoalsHomeAway(premHome)
+premAwayTeamGoals <- performanceGoalsHomeAway(premAway)  
+premTeamGoals <- data_frame()
+premTeamGoals <- rbind(premHomeTeamGoals) %>% rbind(premAwayTeamGoals)
+colnames(premTeamGoals) <- c("Shots Taken" , "Shots On Target", "CornerKicks", "Full Time Goals", "Half Time Goals")
+mylabels <- c("Shots Taken", "Shots On Target", "Corner Kicks","Full Time Goals", "Half Time Goals") 
+barplot(premTeamGoals, main = "Average Shots & Goals Scorded by Home & Away Teams", xlab = "Shots & Goals", ylab = "Mean Score", ylim=c(0,15), names.arg=mylabels, col = c("#E82C0C", "#340CB5"), beside = TRUE)
+legend("topright", c("Home","Away"), fill = c("#E82C0C", "#340CB5"))
+```
+
+
+•	Home Advantage: was measured by calculating the points earned from all matches played at home versus away. The team gets 3 points for a win, 1 point for a draw, and zero for a loss. If the ratio is 50%, it indicates that success has been achieved equally at home and away i.e. there is no home field advantage. If the ratio is above 50% then it indicates that playing at home field increases the winning probability. 
+
+```{r tidy = TRUE, echo = FALSE}
 premHomeAdvantage  <- data.frame()
 premStat <- premStat[order(premStat$Team1,premStat$HomeAway),]
-premHomeAdvantage  <- performanceHomeAdvantage(premStat)
-premHomeAdvantage %>% arrange(desc(HomeAdvantage), desc(AwayAdvantage))
+dfHomeAdvantage  <- performanceHomeAdvantage(premStat)
+
+colnames(dfHomeAdvantage) <- c("Team", "Home Advantage", "Away Advantage", "Total Games Played")
+dfHomeAdvantage$Team <- gsub(" ", "", dfHomeAdvantage$Team)
+dfHomeAdvantage <- dfHomeAdvantage[order(dfHomeAdvantage$Team),]
+row.names(dfHomeAdvantage) <- NULL
+TeamCodes <- c("ARS","BOU","BRH","BUR","CHE","CRY","EVE","HDD","LEI","LIV","MCI","MUN","NEW","SOU","STK","SWA","TOT", "WAT","WBA","WHU")
+dfHomeAdvantage <- dfHomeAdvantage[-2,] 
+dfHomeAdvantage <- dfHomeAdvantage[-9,] 
+dfHomeAdvantage <- dfHomeAdvantage[-13,] 
+dfHomeAdvantage <- dfHomeAdvantage[-14,] 
+dfHomeAdvantage <- dfHomeAdvantage[-16,] 
+dfHomeAdvantage <- dfHomeAdvantage[,2:3] 
+
+dfHomeAdvantage <- dfHomeAdvantage  %>% cbind(TeamCodes)  
+
+#Reshape data into long format
+TeamCodes <- dfHomeAdvantage$TeamCodes
+dfHomeAdvantage <- melt(dfHomeAdvantage, id=c("TeamCodes"))
+
+#Build the plot
+ggplot(dfHomeAdvantage) + geom_bar(aes(x = TeamCodes, y = value, fill = variable), stat="identity", position = "dodge", width = 0.7) + scale_fill_manual("Advantage\n", values = c("red","blue"), labels = c("Home", "Away")) + labs(title="English Premier League Teams (Home vs. Away Advantage)", x="Teams",y="Percent") + theme_bw(base_size = 14) + theme(axis.ticks=element_blank(), axis.text.y = element_blank())
+```
+
+
+13. Any early observations, nuggets of interest, interpretation, interesting findings  
+Overall, the findings were not surprising as they were consistent with our assumptions with the only exception of home advantage. Only 10 teams had a home advantage greater than 50%.
+
+### USE OF MODELING TECHNIQUES
+14. Modeling approach
+After loading the data 3 variables were added to the dataset;
+•	Dependent Variable WIN:
+```{r tidy = TRUE}
+premTransformed$win <- ifelse(premTransformed$GS > premTransformed$GA, 1, 0)
+#Note: a tie is categorized as a 0 in this formula and prediction
+```
+
+
+•	Halftime Goal Difference:
+```{r tidy = TRUE}
+premTransformed$HTdiff <- premTransformed$HTGS - premTransformed$HTGA
+```
+
+
+•	Combine Yellow and Red cards into a single variable:
+```{r tidy = TRUE}
+premTransformed$red_yellow <- premTransformed$RedCards + premTransformed$YellowCards
+premTransformed$opp_red_yellow <- premTransformed$OppRedCards + premTransformed$OppYellowCards
+```
+
+
+•	And transformed HomeAway to factor:
+```{r tidy = TRUE}
+premTransformed$HomeAway <- as.factor(premTransformed$HomeAway)
+```
+
+
+We used a logistic regression model, where we first built the model using all the variables. 
+```{r tidy = TRUE, echo = FALSE}
+logModel <- glm(formula = win ~ HomeAway + FTR + HTdiff + HTR + ShotsTaken + ShotsAllowed + ShotsOnTarget + OppShotsOnTarget + FoulsCommitted + FoulsReceived + CornerKicks + OppCornerKicks + YellowCards + OppYellowCards + RedCards + OppRedCards + DrawOdds + LossOdds + red_yellow + opp_red_yellow, data = premTransformed, family = binomial(logit))
+summary(logModel)
+
+```
+
+
+With this initial logistic regression done, we now filter down to the most significant variables.
+```{r tidy = TRUE, echo = FALSE}
+logModelCondensed <- glm(win ~ HTdiff + ShotsOnTarget + OppShotsOnTarget + CornerKicks + OppCornerKicks + RedCards + OppRedCards, data = premTransformed, family = binomial(logit))
+
+summary(logModelCondensed)
+```
+
+
+Our results have improved but they are still not at a point where we feel comfortable with them. We will do one final iteration.
+```{r tidy = TRUE, echo = FALSE}
+logModelCondensed2 <- glm(win ~ GS + HTdiff + OppShotsOnTarget + RedCards, data = premTransformed, family = binomial(logit))
+
+summary(logModelCondensed2)
+```
+
+
+We have a good AIC of 1307 and find that by reducing to only four variables - GS, HTdiff, OppShotsOnTarget, and RedCards - we are able to make more accurate predictions. 
+We will now test the accuracy of this model furthermore by training and testing it. 
+
+15. Classification Models
+We will test the four most significant variables by using the KSVM, SVM, and Naive Bayes algorithms to predict whether a team will win a game or lose/draw it. 
+
+The first step will be to create a training and test sets. 
+```{r tidy = TRUE}
+randIndex <- sample(1:dim(premTransformed)[1])
+#selects the cut off point for 67 percent of the data.
+cutPoint2_3 <- floor(2* dim(premTransformed)[1]/3)  
+
+#creates training dataset.
+trainData <- premTransformed[randIndex[1:cutPoint2_3],]  
+#creates test dataset.
+testData <- premTransformed[randIndex[(cutPoint2_3+1):dim(premTransformed)[1]],]  
+
+#Convert the response variable to factor.
+trainData$win <- as.factor(trainData$win)
+testData$win <- as.factor(testData$win)
+```
+
+
+Now, we will start training and testing the algorithms, starting with the KSVM algorithm.
+```{r tidy = TRUE, echo = FALSE}
+ksvmPrem <- ksvm(win ~ GS + HTdiff + OppShotsOnTarget + RedCards, data = trainData, kernel = "rbfdot", kpar = "automatic", C = 10, cross = 10, prob.model = TRUE)
+
+#Predict and transform the data to test accuracy
+ksvmPred <- predict(ksvmPrem, testData)
+ksvmPred <- as.data.frame(ksvmPred)
+colnames(ksvmPred) <- "predicted"
+ksvmPredDf <- testData %>% select(actual = win) %>% bind_cols(ksvmPred)
+
+#Confusion matrix
+confusionMatrix(ksvmPredDf$predicted, ksvmPredDf$actual)
+```
+
+
+KSVM gave us good results (84.3 percent accuracy!) Let's try working with the SVM algorithm.
+```{r tidy = TRUE, echo = FALSE}
+svmPrem <- svm(win ~ GS + HTdiff + OppShotsOnTarget + RedCards, data = trainData, kernel = "radial", C = 10, cross = 10, prob.model = TRUE)
+
+#Predict the accuracy of the SVM model
+svmPred <- predict(svmPrem, testData)
+svmPred <- data.frame(svmPred)
+colnames(svmPred) <- "predicted"
+svmPredDf <- merge(testData, svmPred, by = 0, all = TRUE)
+svmPredDf <- svmPredDf %>% filter(!is.na(predicted))
+
+#Build the confusion matrix
+confusionMatrix(svmPredDf$predicted, svmPredDf$win)
+```
+
+
+We had an issue with the test dataset where only 392 of the 760 variables were being returned. Nevertheless, we filtered out those that weren't being predicted and ended up with an 80.4 percent accuracy rate. Good but not an improvement on the KSVM algorithm. We will try running a Naive Bayes. 
+```{r tidy = TRUE, echo = FALSE}
+nbPrem <- naiveBayes(win ~ GS + HTdiff + OppShotsOnTarget + RedCards, data = trainData)
+
+#Predict, transform, and build the confusion matrix. 
+nbPred <- predict(nbPrem, testData) 
+nbPred <- data.frame(nbPred)
+colnames(nbPred) <- 'predicted'
+nbPredDf <- testData %>% select(actual = win) %>% bind_cols(nbPred)
+
+confusionMatrix(nbPredDf$predicted, nbPredDf$actual)
+```
+
+
+Naive Bayes was closer to KSVM but not close enough. Maybe by further adjusting the models, we can have closer results and maybe even improve to a 90 percent prediction rate.
+
+16. Plotting and further interpreting results. 
+We'll now plot the three classification algorithms to see how they stack against each other. 
+
+```{r tidy = TRUE, echo = FALSE}
+#Plot KSVM model
+ksvmPredDf <- testData %>% bind_cols(ksvmPred) %>% mutate(correct = ifelse(win == predicted, 1, 0))
+
+ksvmPlot <- ggplot(ksvmPredDf, aes(x = GS, y = HTdiff, color = OppShotsOnTarget)) + geom_point(aes(size = as.factor(correct), shape = as.factor(predicted)), alpha = 0.5) + ggtitle("KSVM algorithm", subtitle = "Win/Loss prediction") + labs(x = "Goals Scored", y = "Half-Time Differential", size = "Correct", color = "Opp SOT", shape = "Prediction")
+
+#Plot SVM Model
+svmPredDf <- svmPredDf %>% mutate(correct = ifelse(win == predicted, 1, 0))
+
+svmPlot <- ggplot(svmPredDf, aes(x = GS, y = HTdiff, color = OppShotsOnTarget)) + geom_point(aes(size = as.factor(correct), shape = as.factor(predicted)), alpha = 0.5) + ggtitle("SVM algorithm", subtitle = "Win/Loss prediction") + labs(x = "Goals Scored", y = "Half-Time Differential", size = "Correct", color = "Opp SOT", shape = "Prediction")
+
+#Plot Naive Bayes Model
+nbPredDf <- testData %>% bind_cols(nbPred) %>% mutate(correct = ifelse(win == predicted, 1, 0))
+
+nbPlot <- ggplot(nbPredDf, aes(x = GS, y = HTdiff, color = OppShotsOnTarget)) + geom_point(aes(size = as.factor(correct), shape = as.factor(predicted)), alpha = 0.5) + ggtitle("Naive Bayes algorithm", subtitle = "Win/Loss prediction") + labs(x = "Goals Scored", y = "Half-Time Differential", size = "Correct", color = "Opp SOT", shape = "Prediction")
+
+#Print the plots
+ksvmPlot
+svmPlot
+nbPlot
+
+```
+
+
+So, we can see that the model correctly predicts most of the matches. Nevertheless, it doesn't do an overall good job as there are many areas where the model predicts both correctly and incorrectly. This is an area of further improvement within the model that could probably be solved by adding more data points or adjusting the models. 
+
+###CONCLUSIONS
+17. Final thoughts
+We managed to answer the three questions that we set out at the start of this project. 
+1. When viewing the descriptive statistics, there was no significant variation in teams winning home or away - though teams tended to draw more away than at home. We further saw that this was not something worthwhile considering when we dived into the logistic regression. Home-field advantage was thus discarded as something not really present within the English Premier League.  
+2. On the score at half-time, we did find that teams that entered half-time in the lead ended more likely than not winning the game. However, if both teams entered half-time tied, there was an equal chance of either team winning or both of them tying, which is very interesting. This means that teams are very competitive and any tied game is up for grabs. 
+3. Finally, we found that fouls committed or received, as well as yellow cards, had no impact on the outcome of the game. Red cards received however where very influential in the result.  
+Similarly, corner kicks taken or allowed, and shots taken had no effect on the end result, but shots on target by the opposing team where a factor that was closely correlated to the result of the game at full-time.  
+
+
+### APPENDIX - RStudio Code
+```{r eval=FALSE, tidy = TRUE}
+#Load the required packages
+require(arules)
+require(bindr)
+require(caret)
+require(caTools)
+require(dplyr)
+require(e1071)
+require(eeptools) 
+require(formatR)
+require(ggplot2)
+require(gridExtra)
+require(kernlab)
+require(lubridate)
+require(magrittr)
+require(neuralnet)
+require(randomForest)
+require(readxl)
+require(reshape2)
+require(rpart) 
+require(sqldf)
+require(tidyr)
+require(tidyverse)
+
+#Obtain the data from the appropriate sites. 
+prem1516 <- read.csv("http://www.football-data.co.uk/mmz4281/1516/E0.csv")
+prem1617 <- read.csv("http://www.football-data.co.uk/mmz4281/1617/E0.csv")
+prem1718 <- read.csv("http://www.football-data.co.uk/mmz4281/1718/E0.csv")
+
+#Bind the data into one large data frame. 
+prem <- prem1516 %>% bind_rows(prem1617) %>% bind_rows(prem1718)
+head(prem)
+
+#Transform the dataset into a more comprehensive dataset, with one row for each team and date. 
+#Select Home Team and Home team data. 
+premHomeTeams <- prem %>% 
+  dplyr::mutate(HomeAway = 'Home') %>% 
+  dplyr::select(Div, Date, Team1 = HomeTeam, Team2 = AwayTeam, HomeAway, GS = FTHG, GA = FTAG, FTR, HTGS = HTHG, HTGA = HTAG, HTR, Referee, ShotsTaken = HS, ShotsAllowed = AS, ShotsOnTarget = HST, OppShotsOnTarget = AST, FoulsCommitted = HF, FoulsReceived = AF, CornerKicks = HC, OppCornerKicks = AC, YellowCards = HY, OppYellowCards = AY, RedCards = HR, OppRedCards = AR, WinOdds = B365H, DrawOdds = B365D, LossOdds = B365A)
+
+#Select Away Team and Away team data.
+premAwayTeams <- prem %>% 
+  dplyr::mutate(HomeAway = 'Away') %>% 
+  dplyr::select(Div, Date, Team1 = AwayTeam, Team2 = HomeTeam, HomeAway, GS = FTAG, GA = FTHG, FTR, HTGS = HTAG, HTGA = HTHG, HTR, Referee, ShotsTaken = AS, ShotsAllowed = HS, ShotsOnTarget = AST, OppShotsOnTarget = HST, FoulsCommitted = AF, FoulsReceived = HF, CornerKicks = AC, OppCornerKicks = HC, YellowCards = AY, OppYellowCards = HY, RedCards = AR, OppRedCards = HR, WinOdds = B365A, DrawOdds = B365D, LossOdds = B365A)
+
+#Bind datasets into a new dataset. 
+premTransformed <- premHomeTeams %>% bind_rows(premAwayTeams)
+
+#Check the first part of the data, column names, dimensions of the dataset, and the structure. 
+head(premTransformed)
+colnames(premTransformed)
+dim(premTransformed)
+str(premTransformed)
+
+#Create functions that are able to provide several measurements of central tendency. 
+#Calculate mean shots taken for each team. 
+performanceGoalsHomeAway <- function(x) {
+  df <- x
+  MeanShotsTaken <-mean(df$ShotsTaken)
+  MeanShotsOnTarget <-mean(df$ShotsOnTarget)
+  MeanCornerKicks <-mean(df$CornerKicks)
+  MeanFTGoals <-mean(df$GS)
+  MeanHTGoals <-mean(df$HTGS)
+  
+  mStats <- c(MeanShotsTaken , MeanShotsOnTarget, MeanCornerKicks, MeanFTGoals, MeanHTGoals)
+  return(mStats)
+}
+
+#The function performanceCardsHomeAway computes average of cards received and fouls committed and against Home and Away teams
+#GF: Goal For, GA: Goal Against,	AVG
+performanceCardsHomeAway <- function(x) {
+  df <- x
+  TotalGamesPlayed <- nrow(df)
+  TotalFoulsCommitted <-sum(df$HF)
+  TotalFoulsReceived <-sum(df$AF)
+  TotalYellowCards <-sum(df$HY)
+  TotalRedCards <-sum(df$HR)
+  TotalOppYellowCards <-sum(df$AY)
+  TotalOppRedCards <-sum(df$AR)
+  MeanFoulsCommitted <-round(mean(df$HF), digits = 1)
+  MeanFoulsReceived <-round(mean(df$AF), digits = 1)
+  MeanYellowCards <-round(mean(df$HY), digits = 1)
+  MeanRedCards <-round(mean(df$HR), digits = 1) 
+  MeanOppYellowCards <-round(mean(df$AY), digits = 1) 
+  MeanOppRedCards <-round(mean(df$AR), digits = 1)
+  
+  mStats <- data.frame(TotalGamesPlayed, TotalFoulsCommitted, TotalFoulsReceived, TotalYellowCards, TotalRedCards, TotalOppYellowCards, TotalOppRedCards, MeanFoulsCommitted, MeanFoulsReceived, MeanYellowCards, MeanOppYellowCards, MeanRedCards, MeanOppRedCards)
+  return(mStats)
+}
+
+#The function descriptiveStatsInfo’ takes a dataframe as input, and calculates the followings: mean, median, min and max, standard deviation, quantiles, and skewness. 
+descriptiveStatsInfo <- function(x) {
+  #Computing statistical measurements for teams
+  df <- x
+  MeanFTWin <- mean(df$TotalFTWin)
+  MeanFTLoss <- mean(df$TotalFTLoss)
+  MeanFTDraw <- mean(df$TotalFTDraw)
+  STDFTWin <- sd(df$TotalFTWin, na.rm=TRUE)
+  STDFTLoss <- sd(df$TotalFTLoss, na.rm=TRUE)
+  STDFTDraw <- sd(df$TotalFTDraw, na.rm=TRUE)
+  MedianFTWin <- median(df$TotalFTWin)
+  MedianFTLoss <- median(df$TotalFTLoss)
+  MedianFTDraw <- median(df$TotalFTDraw)
+  MinFTWin <- min(df$TotalFTWin)
+  MaxFTWin <- max(df$TotalFTWin)
+  MinFTLoss <- min(df$TotalFTLoss)
+  MaxFTLoss <- max(df$TotalFTLoss)
+  MinFTDraw <- min(df$TotalFTDraw)
+  MaxFTDraw <- max(df$TotalFTDraw)
+  QuantilesFTWinInfo <- quantile(df$TotalFTWin, probs = c(0.05, 0.95))
+  SkewnessFTWinInfo <- skewness(df$TotalFTWin)
+  QuantilesFTLossInfo <- quantile(df$TotalFTLoss, probs = c(0.05, 0.95))
+  SkewnessFTLossInfo <- skewness(df$TotalFTLoss)
+  QuantilesFTDrawInfo <- quantile(df$TotalFTDraw, probs = c(0.05, 0.95))
+  SkewnessFTDrawInfo <- skewness(df$TotalFTDraw)
+  
+  mStats <- data.frame(MeanFTWin, MeanFTLoss, MeanFTDraw, STDFTWin, STDFTLoss, STDFTDraw, MedianFTWin, MedianFTLoss, MedianFTDraw, MinFTWin, MaxFTWin, MinFTLoss, MaxFTLoss, MinFTDraw, MaxFTDraw, QuantilesFTWinInfo, SkewnessFTWinInfo, QuantilesFTLossInfo, SkewnessFTLossInfo, QuantilesFTDrawInfo, SkewnessFTDrawInfo)
+  
+  return(mStats)
+}
+
+#The function summaryStatsHomeAway computes totals for Home and Away teams
+summaryStatsHomeAway <- function(x, mTeam1, mHomeAway) {
+  df <- x
+  HomeAway <-mHomeAway 
+  Team1 <-mTeam1
+  TotalGamesPlayed <- nrow(df)
+  TotalShotsTaken <- sum(df$ShotsTaken)
+  TotalShotsOnTarget <- sum(df$ShotsOnTarget)
+  TotalFoulsCommitted <- sum(df$FoulsCommitted)
+  TotalCornerKicks <- sum(df$CornerKicks)
+  TotalYellowCards <- sum(df$YellowCards)
+  TotalRedCards <- sum(df$RedCards)
+  TotalFTGoals <- sum(df$GS)
+  TotalHTGoals <- sum(df$HTGS)
+  df$FTR <- gsub(" ", "", df$FTR)
+  df$HTR <- gsub(" ", "", df$HTR)
+  TotalHTWin <- length(which(df$HTR == "H"))
+  TotalHTLoss <- length(which(df$HTR == "A"))
+  TotalHTDraw <- length(which(df$HTR == "D"))
+  TotalFTWin <- length(which(df$FTR == "H"))
+  TotalFTLoss <- length(which(df$FTR == "A"))
+  TotalFTDraw <- length(which(df$FTR == "D"))
+  mStats <- data.frame(Team1, HomeAway, TotalShotsTaken , TotalShotsOnTarget, TotalFoulsCommitted, TotalCornerKicks, TotalYellowCards, TotalRedCards, TotalFTGoals, TotalHTGoals, TotalHTWin, TotalHTLoss, TotalHTDraw, TotalFTWin, TotalFTLoss, TotalFTDraw, TotalGamesPlayed)
+  return(mStats)
+}
+
+# The function performanceHomeAdvantage computes the Home Field Advantage
+performanceHomeAdvantage <- function(x) {
+  # Home field advantage will be calculated as follows:
+  # The team gets 3 points for a win, 1 point for a draw, and zero for a loss.
+  # Calculate the ratio of total points earned from all matches/games played at home vs. away.
+  # If the ratio is 50%, it indicates that success has been achieved equally at home and away i.e.there is no home field advantage.
+  # If the ratio is above 50% then it indicates that playing at home field increases the winning probability.
+  df <- x
+  mMax <- nrow(df)
+  mCounter <- 1
+  HomeAdvantagedf <- data.frame()
+  while (mCounter <= (mMax - 1)) {
+    TotalHomePoints <- 0
+    TotalAwayPoints <- 0
+    if(df$HomeAway[mCounter] == "Home") {
+      TotalHomePoints <- df$TotalFTWin[mCounter] * 3 + df$TotalFTDraw[mCounter] * 1 
+      TotalAwayPoints <- df$TotalFTWin[mCounter + 1] * 3 + df$TotalFTDraw[mCounter] * 1
+    }
+    HomeAdvantage = round(TotalHomePoints/(df$TotalGamesPlayed[mCounter] * 3) * 100, digits = 1)
+    AwayAdvantage = round(TotalAwayPoints/(df$TotalGamesPlayed[mCounter] * 3) * 100, digits = 1)
+    
+    mStats <- data.frame(df$Team1[mCounter], HomeAdvantage, AwayAdvantage, df$TotalGamesPlayed[mCounter])
+    HomeAdvantagedf <- HomeAdvantagedf %>% rbind(mStats)
+    
+    mCounter <- mCounter + 2
+  }
+  return(HomeAdvantagedf)
+}
+
+#Step 2: Create a dataframe with all teams (Home and Away) participating in the UK premiere league and their totals.
+premTeams <- gsub(" ", "", premTransformed$Team1)
+premTeams <- unique(premTeams)
+premTeams
+
+premHome <- premHomeTeams %>% mutate(HomeAway = "Home") %>% select(Date, Team1, Team2, HomeAway, GS, FTR, HTGS, HTR, ShotsTaken, ShotsOnTarget, FoulsCommitted, CornerKicks, YellowCards, RedCards)
+premAway <- premAwayTeams %>% mutate(HomeAway = "Away") %>% select(Date, Team1, Team2, HomeAway, GS, FTR, HTGS, HTR, ShotsTaken, ShotsOnTarget, FoulsCommitted, CornerKicks, YellowCards, RedCards)
+
+mCounter <- 1
+mMax <- length(premTeams)
+premHomeTeamStat <- data.frame()
+premAwayTeamStat <- data.frame()
+premStat <- data.frame()
+while (mCounter <= mMax) {
+  mTeam <- premTeams[mCounter]
+  premHomeTeam <- premHome[ which(premHome$Team1 == mTeam),]
+  premAwayTeam <- premAway[ which(premAway$Team1 == mTeam),]
+  premHomeStatTemp  <- summaryStatsHomeAway(premHomeTeam, mTeam,"Home" )
+  premAwayStatTemp  <- summaryStatsHomeAway(premAwayTeam, mTeam,"Away") 
+  premHomeTeamStat  <- cbind(premHomeStatTemp)  
+  premAwayTeamStat  <- cbind(premAwayStatTemp)
+  premStat <- premStat  %>% rbind(premHomeTeamStat) 
+  premStat <- premStat  %>% rbind(premAwayTeamStat)  
+  mCounter <- mCounter + 1
+}
+
+#Renumber/reindex the row numbers
+row.names(premStat) <- NULL
+#premStat <- premStat[,-2:-2]   # removing Team2
+premStat
+
+#Step 3: calculate the descriptive & performance statistics for all Home and Away teams.
+
+#1. Calculate average goals scorded for or against for Home and Away teams
+premHomeTeamGoals <- performanceGoalsHomeAway(premHome)
+premAwayTeamGoals <- performanceGoalsHomeAway(premAway)  
+premHomeTeamGoals 
+premAwayTeamGoals
+
+#2. Calculate average cards received and fouls committed for Home and Away teams
+premTeamCards  <- performanceCardsHomeAway(prem)
+premTeamCards
+
+#3. Calculate descriptive statistics for Home and Away teams
+premHomedescriptiveStats <- data.frame()
+premAwaydescriptiveStats <- data.frame()
+premdescriptiveStats <- data.frame()
+premHomedescriptiveStats <- descriptiveStatsInfo(premStat[which(premStat$HomeAway == "Home"),])
+premAwaydescriptiveStats <- descriptiveStatsInfo(premStat[which(premStat$HomeAway == "Away"),])
+premdescriptiveStats <- premHomedescriptiveStats %>% rbind(premAwaydescriptiveStats)  
+row.names(premdescriptiveStats) <- c("Home05", "Home95", "Away05", "Away95")
+premdescriptiveStats <- descriptiveStatsInfo(premStat)
+str(premdescriptiveStats)
+View(premdescriptiveStats)
+
+#Calculate mean wins, draws, and losses for each team and create plots. 
+dfpremStat <- data_frame()
+dfpremStat <- premStat[which(premStat$HomeAway == "Home"),]
+dfpremStat$Team1 <- gsub(" ", "", dfpremStat$Team1)
+dfpremStat <-dfpremStat[order(dfpremStat$Team1),]
+row.names(dfpremStat) <- NULL
+dfpremStat <- dfpremStat[-2,] 
+dfpremStat <- dfpremStat[-9,] 
+dfpremStat <- dfpremStat[-13,] 
+dfpremStat <- dfpremStat[-14,] 
+dfpremStat <- dfpremStat[-16,] 
+row.names(dfpremStat) <- NULL
+TeamCodes <- c("ARS","BOU","BRH","BUR","CHE","CRY","EVE","HDD","LEI","LIV","MCI","MUN","NEW","SOU","STK","SWA","TOT", "WAT","WBA","WHU")
+dfpremStat <- dfpremStat %>% cbind(TeamCodes) 
+dfTotalWin <- cbind(dfpremStat$TeamCodes)  %>% cbind(dfpremStat$TotalFTWin)   
+dfpremStat <- dfpremStat[,-1:-13]
+dfpremStat <- dfpremStat[,-4]
+
+#Full-time wins
+ggplot(dfpremStat, aes(x = dfpremStat$TotalFTWin)) + geom_histogram(aes(y = ..density..), binwidth = 3, colour = "white", fill = "red") + geom_density(alpha = .2, fill = "blue") +   labs(title = "English Premier League - Distribution of Total Wins", x = "Total Wins") + theme_bw() + theme(axis.ticks = element_blank(), axis.text.y = element_blank())
+
+#Full-time losses
+ggplot(dfpremStat, aes(x = dfpremStat$TotalFTLoss)) + geom_histogram(aes(y = ..density..), binwidth = 3, colour = "white", fill = "red") + geom_density(alpha = .2, fill = "blue")  + labs(title = "English Premier League - Distribution of Total Losses", x = "Total Losses") + theme_bw() + theme(axis.ticks = element_blank(), axis.text.y = element_blank())
+
+#Full-time draws
+ggplot(dfpremStat, aes(x = dfpremStat$TotalFTDraw)) + geom_histogram(aes(y = ..density..), binwidth = 3, colour = "white", fill = "red") + geom_density(alpha = .2, fill = "blue")  + labs(title = "English Premier League - Distribution of Total Draws", x = "Total Draws") + theme_bw() + theme(axis.ticks = element_blank(), axis.text.y = element_blank()) 
+
+#Calculate mean measurements for disciplinary statistics (fouls, yellow and red cards.)
+premTeamCards  <- performanceCardsHomeAway(prem)
+premCards <- data.frame()
+premCards <- premCards %>% rbind(premTeamCards)
+premCards <- premCards  %>% rbind(premCards)
+colnames(premCards) <- c("TotalGamesPlayed", "TotalFoulsCommitted", "TotalFoulsReceived", "TotalYellowCards", "TotalRedCards","TotalOppYellowCards", "TotalOppRedCards", "MeanFoulsCommitted", "MeanFoulsReceived", "MeanYellowCards","MeanOppYellowCards", "MeanRedCards", "MeanOppRedCards")
+row.names(premCards) <- c("Cards Received" ,"Cards Opponent")
+mTotalGamesPlayed <- premTeamCards[1]
+premCards <- premCards[,4:7]
+premCards[2,1] <- premCards[1,3]
+premCards[2,2] <- premCards[1,4]
+premCards <- premCards[,1:2]
+premCardsTemp <- premCards$TotalYellowCards 
+premCardsTemp <- premCardsTemp %>% cbind(premCards$TotalRedCards)  
+
+mylabels <- c("Yellow Cards","Yellow Cards","Red Cards","Red Cards")
+barplot(premCardsTemp,  main=paste("Total Cards Received in" ,mTotalGamesPlayed, "Games"), ylab = "Number of Cards", xlab = "Card Type",names.arg=mylabels, ylim=c(0,2000), col = c("red","blue"), beside = TRUE)
+legend("right", c("Home" ,"Away"), fill = c("red","blue"), cex = 0.75)
+
+#Check if there is a difference in scoring and shots taken. 
+premHomeTeamGoals <- performanceGoalsHomeAway(premHome)
+premAwayTeamGoals <- performanceGoalsHomeAway(premAway)  
+premTeamGoals <- data_frame()
+premTeamGoals <- rbind(premHomeTeamGoals) %>% rbind(premAwayTeamGoals)
+colnames(premTeamGoals) <- c("Shots Taken" , "Shots On Target", "CornerKicks", "Full Time Goals", "Half Time Goals")
+mylabels <- c("Shots Taken", "Shots On Target", "Corner Kicks","Full Time Goals", "Half Time Goals") 
+barplot(premTeamGoals, main = "Average Shots & Goals Scorded by Home & Away Teams", xlab = "Shots & Goals", ylab = "Mean Score", ylim=c(0,15), names.arg=mylabels, col = c("#E82C0C", "#340CB5"), beside = TRUE)
+legend("topright", c("Home","Away"), fill = c("#E82C0C", "#340CB5"))
+
+#Finally, check if there's a significant home-field advantage. 
+premHomeAdvantage  <- data.frame()
+premStat <- premStat[order(premStat$Team1,premStat$HomeAway),]
+dfHomeAdvantage  <- performanceHomeAdvantage(premStat)
+
+colnames(dfHomeAdvantage) <- c("Team", "Home Advantage", "Away Advantage", "Total Games Played")
+dfHomeAdvantage$Team <- gsub(" ", "", dfHomeAdvantage$Team)
+dfHomeAdvantage <- dfHomeAdvantage[order(dfHomeAdvantage$Team),]
+row.names(dfHomeAdvantage) <- NULL
+TeamCodes <- c("ARS","BOU","BRH","BUR","CHE","CRY","EVE","HDD","LEI","LIV","MCI","MUN","NEW","SOU","STK","SWA","TOT", "WAT","WBA","WHU")
+dfHomeAdvantage <- dfHomeAdvantage[-2,] 
+dfHomeAdvantage <- dfHomeAdvantage[-9,] 
+dfHomeAdvantage <- dfHomeAdvantage[-13,] 
+dfHomeAdvantage <- dfHomeAdvantage[-14,] 
+dfHomeAdvantage <- dfHomeAdvantage[-16,] 
+dfHomeAdvantage <- dfHomeAdvantage[,2:3] 
+
+dfHomeAdvantage <- dfHomeAdvantage  %>% cbind(TeamCodes)  
+
+#Reshape data into long format
+TeamCodes <- dfHomeAdvantage$TeamCodes
+dfHomeAdvantage <- melt(dfHomeAdvantage, id=c("TeamCodes"))
+
+#Build the plot
+ggplot(dfHomeAdvantage) + geom_bar(aes(x = TeamCodes, y = value, fill = variable), stat="identity", position = "dodge", width = 0.7) + scale_fill_manual("Advantage\n", values = c("red","blue"), labels = c("Home", "Away")) + labs(title="English Premier League Teams (Home vs. Away Advantage)", x="Teams",y="Percent") + theme_bw(base_size = 14) + theme(axis.ticks=element_blank(), axis.text.y = element_blank())
 
 #Data modeling.
+#Create a win dummy variable. 
+premTransformed$win <- ifelse(premTransformed$GS > premTransformed$GA, 1, 0)
+#Note: a tie is categorized as a 0 in this formula and prediction
 
+#Calculate the score difference at half-time.
+premTransformed$HTdiff <- premTransformed$HTGS - premTransformed$HTGA
 
+#Calculate the sum of red and yellow cards accumulated by both teams. 
+premTransformed$red_yellow <- premTransformed$RedCards + premTransformed$YellowCards
+premTransformed$opp_red_yellow <- premTransformed$OppRedCards + premTransformed$OppYellowCards
+
+#Transform HomeAway into a factor. 
+premTransformed$HomeAway <- as.factor(premTransformed$HomeAway)
+
+#Generate our first logistic regression taking into account all the variables.
+logModel <- glm(formula = win ~ HomeAway + FTR + HTdiff + HTR + ShotsTaken + ShotsAllowed + ShotsOnTarget + OppShotsOnTarget + FoulsCommitted + FoulsReceived + CornerKicks + OppCornerKicks + YellowCards + OppYellowCards + RedCards + OppRedCards + DrawOdds + LossOdds + red_yellow + opp_red_yellow, data = premTransformed, family = binomial(logit))
+summary(logModel)
+
+#Second logistic regression with most significant variables. 
+logModelCondensed <- glm(win ~ HTdiff + ShotsOnTarget + OppShotsOnTarget + CornerKicks + OppCornerKicks + RedCards + OppRedCards, data = premTransformed, family = binomial(logit))
+
+summary(logModelCondensed)
+
+#Final logistic regression with the most significant variables from the second iteration. 
+logModelCondensed2 <- glm(win ~ GS + HTdiff + OppShotsOnTarget + RedCards, data = premTransformed, family = binomial(logit))
+
+summary(logModelCondensed2)
+
+#Separate the data into training and testing sets. 
+randIndex <- sample(1:dim(premTransformed)[1])
+#selects the cut off point for 67 percent of the data.
+cutPoint2_3 <- floor(2* dim(premTransformed)[1]/3)  
+
+#creates training dataset.
+trainData <- premTransformed[randIndex[1:cutPoint2_3],]  
+#creates test dataset.
+testData <- premTransformed[randIndex[(cutPoint2_3+1):dim(premTransformed)[1]],]  
+
+#Convert the response variable to factor.
+trainData$win <- as.factor(trainData$win)
+testData$win <- as.factor(testData$win)
+
+#Generate a KSVM classification model. 
+ksvmPrem <- ksvm(win ~ GS + HTdiff + OppShotsOnTarget + RedCards, data = trainData, kernel = "rbfdot", kpar = "automatic", C = 10, cross = 10, prob.model = TRUE)
+
+#Predict and transform the data to test accuracy
+ksvmPred <- predict(ksvmPrem, testData)
+ksvmPred <- as.data.frame(ksvmPred)
+colnames(ksvmPred) <- "predicted"
+ksvmPredDf <- testData %>% select(actual = win) %>% bind_cols(ksvmPred)
+
+#Confusion matrix
+confusionMatrix(ksvmPredDf$predicted, ksvmPredDf$actual)
+
+#Test a SVM classification algorithm. 
+svmPrem <- svm(win ~ GS + HTdiff + OppShotsOnTarget + RedCards, data = trainData, kernel = "radial", C = 10, cross = 10, prob.model = TRUE)
+
+#Predict the accuracy of the SVM model
+svmPred <- predict(svmPrem, testData)
+svmPred <- data.frame(svmPred)
+colnames(svmPred) <- "predicted"
+svmPredDf <- merge(testData, svmPred, by = 0, all = TRUE)
+svmPredDf <- svmPredDf %>% filter(!is.na(predicted))
+
+#Build the confusion matrix
+confusionMatrix(svmPredDf$predicted, svmPredDf$win)
+
+#Build a Naive Bayes algorithm.  
+nbPrem <- naiveBayes(win ~ GS + HTdiff + OppShotsOnTarget + RedCards, data = trainData)
+
+#Predict, transform, and build the confusion matrix. 
+nbPred <- predict(nbPrem, testData) 
+nbPred <- data.frame(nbPred)
+colnames(nbPred) <- 'predicted'
+nbPredDf <- testData %>% select(actual = win) %>% bind_cols(nbPred)
+
+confusionMatrix(nbPredDf$predicted, nbPredDf$actual)
+
+#Plot the results of the different models. 
+#Plot KSVM model
+ksvmPredDf <- testData %>% bind_cols(ksvmPred) %>% mutate(correct = ifelse(win == predicted, 1, 0))
+
+ksvmPlot <- ggplot(ksvmPredDf, aes(x = GS, y = HTdiff, color = OppShotsOnTarget)) + geom_point(aes(size = as.factor(correct), shape = as.factor(predicted)), alpha = 0.5) + ggtitle("KSVM algorithm", subtitle = "Win/Loss prediction") + labs(x = "Goals Scored", y = "Half-Time Differential", size = "Correct", color = "Opp SOT", shape = "Prediction")
+
+#Plot SVM Model
+svmPredDf <- svmPredDf %>% mutate(correct = ifelse(win == predicted, 1, 0))
+
+svmPlot <- ggplot(svmPredDf, aes(x = GS, y = HTdiff, color = OppShotsOnTarget)) + geom_point(aes(size = as.factor(correct), shape = as.factor(predicted)), alpha = 0.5) + ggtitle("SVM algorithm", subtitle = "Win/Loss prediction") + labs(x = "Goals Scored", y = "Half-Time Differential", size = "Correct", color = "Opp SOT", shape = "Prediction")
+
+#Plot Naive Bayes Model
+nbPredDf <- testData %>% bind_cols(nbPred) %>% mutate(correct = ifelse(win == predicted, 1, 0))
+
+nbPlot <- ggplot(nbPredDf, aes(x = GS, y = HTdiff, color = OppShotsOnTarget)) + geom_point(aes(size = as.factor(correct), shape = as.factor(predicted)), alpha = 0.5) + ggtitle("Naive Bayes algorithm", subtitle = "Win/Loss prediction") + labs(x = "Goals Scored", y = "Half-Time Differential", size = "Correct", color = "Opp SOT", shape = "Prediction")
+
+#Print the plots
+ksvmPlot
+svmPlot
+nbPlot
 
 ```
