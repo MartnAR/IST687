@@ -12,6 +12,7 @@ require(dplyr)
 require(ggplot2)
 require(formatR)
 require(magrittr)
+require(tidyr)
 ```
 
 ## Table of Contents
@@ -173,24 +174,84 @@ However, we did need to transform it as the data wasn't in the format we desired
 
 ### DESCRIPTIVE STATISTICS
 12. Provide demographic statistics – Location  
+The English Premier League constitutes the highest level of professional football in England. Contested by 20 clubs, it operates on a system of promotion and relegation with the English Football League (EFL). Seasons run from August to May with each team playing 38 matches (playing each other home and away).  As illustrated in the below map, the 20 teams 20 for the season 2017-2018 were widely dispersed geographically.  
+In the descriptive analysis of the Premier League dataset the focus was on the followings:  
+•	Measures of Central Tendency and Dispersion: the mean, standard deviation, median, minimum and maximum values, as well as quantiles were calculated. Below table summarizes this information for one of the key variables i.e. Full Time Win.
 
+```{r tidy = TRUE}
+#Measures of central tendency 
+```
+
+Moreover, the normal distribution was plotted for the following variables Full Time Win,  Full Time Loss, and Full Time Draw.   
+
+```{r tidy = TRUE}
+
+```
+
+The Full Time Win and Full Time Draw variables are normally distributed as they are symmetrical to some extent and the mean and  median are very close. The Full Time Win and Full Time Draw are both slightly left-skewed as the median is larger than the mean.
+```{r tidy = TRUE}
+
+```
+
+•	Team’s discipline: was measured by number of fouls committed, and number of yellow cards and red cards received. The figure below shows the number of yellow and red cards received by Home and Away teams. The Home teams were more disciplined.
+
+```{r tidy = TRUE}
+
+```
+
+•	Scoring Goals and Performance: the average of shots taken, and goals scored for and against Home and Away teams was calculated. The figure below demonstrates a comparison between Home and Away teams. The Home teams performed better as they had higher number of shots and corner kicks, and  higher goals during half as well as full time.
+
+```{r tidy = TRUE}
+
+```
+
+•	Home Advantage: was measured by calculating the points earned from all matches played at home versus away. The team gets 3 points for a win, 1 point for a draw, and zero for a loss. If the ratio is 50%, it indicates that success has been achieved equally at home and away i.e. there is no home field advantage. If the ratio is above 50% then it indicates that playing at home field increases the winning probability. 
+
+```{r tidy = TRUE}
+
+```
 
 13. Any early observations, nuggets of interest, interpretation, interesting findings  
-
-
-14. Graphs, charts, tables, visuals, text  
-
+Overall, the findings were not surprising as they were consistent with our assumptions with the only exception of home advantage. Only 10 teams had a home advantage greater than 50%.
 
 
 
 ### USE OF MODELING TECHNIQUES
-15. Linear modeling  
+15. Modeling approach
+After loading the data 3 variables were added to the dataset;
+•	Dependent Variable WIN:
+```{r tidy = TRUE}
+premTransformed$win <- as.factor(ifelse(premTransformed$GS > premTransformed$GA, 1, 0))
+#Note: a tie is categorized as a 0 in this formula and prediction
+```
 
+•	Halftime Goal Difference:
+```{r tidy = TRUE}
+premTransformed$HTdiff <- premTransformed$HTGS - premTransformed$HTGA
+```
 
-16. Support vector  
+•	Combine Yellow and Red cards into a single variable:
+```{r tidy = TRUE}
+premTransformed$red_yellow <- premTransformed$RedCards + premTransformed$YellowCards
+premTransformed$opp_red_yellow <- premTransformed$OppRedCards + premTransformed$OppYellowCards
+```
 
+We used a logistic regression model, where we first built the model using all the variables. 
+```{r echo = TRUE, tidy = TRUE}
+logModel <- glm(formula = win ~ HomeAway + FTR + HTdiff + HTR + Referee + ShotsTaken + ShotsAllowed + ShotsOnTarget + OppShotsOnTarget + FoulsCommitted + FoulsReceived + CornerKicks + OppCornerKicks
++                                   + YellowCards
++                                   + OppYellowCards
++                                   + RedCards
++                                   + OppRedCards
++                                   + WinOdds
++                                   + DrawOdds
++                                   + LossOdds
++                                   + red_yellow
++                                   + opp_red_yellow,
+, data = premTransformed, family = binomial(logit))
+summary(logModel)
 
-17. Provide key statistics of interest and interpretation for each model  
+```
 
 
 
